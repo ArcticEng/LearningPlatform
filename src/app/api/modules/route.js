@@ -5,7 +5,7 @@ import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
 import { v4 as uuid } from "uuid";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), "public", "uploads");
 
 // POST /api/modules - create module (with optional PDF)
 export async function POST(req) {
@@ -19,7 +19,6 @@ export async function POST(req) {
 
   if (!title || !courseId) return NextResponse.json({ error: "Title and courseId required" }, { status: 400 });
 
-  // Get next order number
   const count = await prisma.module.count({ where: { courseId } });
 
   let pdfPath = null;
@@ -32,7 +31,8 @@ export async function POST(req) {
     const filepath = path.join(UPLOAD_DIR, filename);
     const buffer = Buffer.from(await pdf.arrayBuffer());
     await writeFile(filepath, buffer);
-    pdfPath = `/uploads/${filename}`;
+    // Always serve through the authenticated API route
+    pdfPath = `/api/files/${filename}`;
     pdfName = pdf.name;
   }
 
@@ -53,7 +53,9 @@ export async function DELETE(req) {
 
   if (mod?.pdfPath) {
     try {
-      await unlink(path.join(process.cwd(), "public", mod.pdfPath));
+      // Extract filename from path (works for both /api/files/X and /uploads/X)
+      const filename = path.basename(mod.pdfPath);
+      await unlink(path.join(UPLOAD_DIR, filename));
     } catch {}
   }
 
