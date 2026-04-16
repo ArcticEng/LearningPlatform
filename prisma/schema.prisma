@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  idNumber  String   @unique
+  password  String
+  role      String   @default("learner") // "admin" | "learner"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  results   Result[]
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  title       String
+  description String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  modules     Module[]
+  results     Result[]
+}
+
+model Module {
+  id        String   @id @default(uuid())
+  title     String
+  order     Int      @default(0)
+  pdfPath   String?  // relative path to uploaded PDF in /uploads
+  pdfName   String?  // original filename
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  test      Test?
+  results   Result[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Test {
+  id       String     @id @default(uuid())
+  moduleId String     @unique
+  module   Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  questions Question[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Question {
+  id       String @id @default(uuid())
+  text     String
+  optionA  String
+  optionB  String
+  optionC  String
+  optionD  String
+  correct  Int    @default(0) // 0=A, 1=B, 2=C, 3=D
+  order    Int    @default(0)
+  testId   String
+  test     Test   @relation(fields: [testId], references: [id], onDelete: Cascade)
+}
+
+model Result {
+  id          String   @id @default(uuid())
+  score       Int
+  total       Int
+  percentage  Int
+  answers     String   // JSON string of learner answers
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId     String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  moduleId    String
+  module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+}
