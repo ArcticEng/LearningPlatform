@@ -259,12 +259,19 @@ export default function AdminPage() {
 
   const Brand = (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, var(--accent), #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
-        <Icon name="book" size={18}/>
+      <div style={{
+        width: 36, height: 36, borderRadius: 10,
+        background: "linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        color: "#fff", fontWeight: 800, fontSize: 13, letterSpacing: "-0.04em",
+        fontFamily: "'Montserrat', sans-serif",
+        boxShadow: "0 2px 8px rgba(13, 115, 119, 0.25)",
+      }}>
+        ACT
       </div>
-      <div>
-        <div style={{ fontSize: 16, fontWeight: 800 }}>LearnPulse</div>
-        <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>ADMIN</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'Montserrat', sans-serif" }}>ACT Academy</div>
+        <div style={{ fontSize: 10, color: "var(--brand-accent)", fontWeight: 700, letterSpacing: "0.1em" }}>ADMIN PORTAL</div>
       </div>
     </div>
   );
@@ -310,10 +317,10 @@ export default function AdminPage() {
             <h1 className="page-title">Dashboard</h1>
             <div className="stat-grid">
               {[
-                { label: "Learners", value: learners.length, icon: "users", color: "var(--accent)" },
-                { label: "Courses", value: courses.length, icon: "book", color: "#7c3aed" },
+                { label: "Learners", value: learners.length, icon: "users", color: "var(--brand-primary)" },
+                { label: "Courses", value: courses.length, icon: "book", color: "var(--brand-secondary)" },
                 { label: "Tests Completed", value: results.length, icon: "clip", color: "var(--success)" },
-                { label: "Avg Score", value: results.length ? Math.round(results.reduce((a, r) => a + r.percentage, 0) / results.length) + "%" : "—", icon: "award", color: "var(--warn)" },
+                { label: "Avg Score", value: results.length ? Math.round(results.reduce((a, r) => a + r.percentage, 0) / results.length) + "%" : "—", icon: "award", color: "var(--brand-accent)" },
               ].map((s, i) => (
                 <div key={i} className="card stat-card" style={{ display: "flex", alignItems: "center", gap: 16 }}>
                   <div className="stat-icon" style={{ width: 48, height: 48, borderRadius: 12, background: `${s.color}18`, display: "flex", alignItems: "center", justifyContent: "center", color: s.color, flexShrink: 0 }}>

@@ -1,12 +1,12 @@
 {
-  "name": "LearnPulse",
-  "short_name": "LearnPulse",
-  "description": "Online Course Platform",
+  "name": "ACT Academy",
+  "short_name": "ACT Academy",
+  "description": "ACT caregiver training platform",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f1117",
-  "theme_color": "#4f8cff",
+  "background_color": "#0a1a1c",
+  "theme_color": "#0d7377",
   "icons": [
     {
       "src": "/icon.svg",

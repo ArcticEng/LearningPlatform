@@ -284,12 +284,19 @@ export default function LearnerPage() {
 
   const Brand = (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, var(--accent), #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
-        <Icon name="book" size={18}/>
+      <div style={{
+        width: 36, height: 36, borderRadius: 10,
+        background: "linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        color: "#fff", fontWeight: 800, fontSize: 13, letterSpacing: "-0.04em",
+        fontFamily: "'Montserrat', sans-serif",
+        boxShadow: "0 2px 8px rgba(13, 115, 119, 0.25)",
+      }}>
+        ACT
       </div>
-      <div>
-        <div style={{ fontSize: 16, fontWeight: 800 }}>LearnPulse</div>
-        <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>{user.name}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'Montserrat', sans-serif" }}>ACT Academy</div>
+        <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>{user.name}</div>
       </div>
     </div>
   );

@@ -21,14 +21,12 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idNumber, password }),
       });
-
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Login failed");
         setLoading(false);
         return;
       }
-
       router.push(data.user.role === "admin" ? "/admin" : "/learner");
     } catch {
       setError("Connection error. Please try again.");
@@ -38,24 +36,26 @@ export default function LoginPage() {
 
   return (
     <div className="login-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "32px 20px", position: "relative" }}>
-      <div style={{ position: "absolute", top: 20, right: 20 }}>
-        <ThemeToggle />
-      </div>
+      <div style={{ position: "absolute", top: 20, right: 20 }}><ThemeToggle /></div>
 
-      <div style={{ maxWidth: 420, width: "100%", textAlign: "center" }}>
-        <div style={{ marginBottom: 40 }}>
+      <div style={{ maxWidth: 440, width: "100%", textAlign: "center" }}>
+        <div style={{ marginBottom: 36 }}>
           <div style={{
-            width: 72, height: 72, borderRadius: 20,
-            background: "linear-gradient(135deg, var(--accent), #7c3aed)",
+            width: 84, height: 84, borderRadius: 22,
+            background: "linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))",
             display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 20px", boxShadow: "0 8px 32px rgba(79,140,255,0.3)",
+            margin: "0 auto 20px",
+            boxShadow: "0 10px 40px rgba(13, 115, 119, 0.35)",
+            color: "#fff", fontFamily: "'Montserrat', sans-serif",
+            fontWeight: 800, fontSize: 28, letterSpacing: "-0.04em",
           }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z"/>
-            </svg>
+            ACT
           </div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: "-0.02em" }}>LearnPulse</h1>
-          <p style={{ color: "var(--text-muted)", fontSize: 15, margin: "8px 0 0" }}>Online Course Platform</p>
+          <div className="login-hero">We Empower · We Innovate · We Care</div>
+          <h1 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: "-0.03em" }}>
+            ACT Academy
+          </h1>
+          <p className="login-tag">Dementia Care Training Platform</p>
         </div>
 
         <div className="card" style={{ textAlign: "left" }}>
@@ -69,18 +69,18 @@ export default function LoginPage() {
               <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter password" autoComplete="current-password"/>
             </div>
             {error && (
-              <div style={{ color: "var(--danger)", fontSize: 13, marginBottom: 16, padding: "8px 12px", background: "var(--danger-soft)", borderRadius: 8 }}>
+              <div style={{ color: "var(--danger)", fontSize: 13, marginBottom: 16, padding: "10px 14px", background: "var(--danger-soft)", borderRadius: 8 }}>
                 {error}
               </div>
             )}
-            <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "12px 20px" }}>
+            <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "13px 20px" }}>
               {loading ? "Signing in…" : "Sign In"}
             </button>
           </form>
         </div>
 
-        <p style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 20 }}>
-          Admin: ID &quot;admin&quot; / Password &quot;admin123&quot;
+        <p style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 24 }}>
+          Need access? Contact your training facilitator.
         </p>
       </div>
     </div>
