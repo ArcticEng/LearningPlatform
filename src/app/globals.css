@@ -5,28 +5,29 @@
 @tailwind utilities;
 
 /* ───────────────────────────────────────────
-   ACT Academy — Healthcare Training Platform
-   Brand palette: medical teal + warm coral
+   Aloe Care Trainify — Dementia Care Training
+   Brand: deep navy + lime green
    ─────────────────────────────────────────── */
 
 /* ─── DARK THEME (default) ─── */
 :root,
 [data-theme="dark"] {
-  --bg: #0a1a1c;
-  --surface: #13262a;
-  --surface-alt: #1a3036;
-  --border: #264249;
-  --text: #e6eef0;
-  --text-muted: #8ca0a4;
+  --bg: #0d1538;
+  --surface: #152048;
+  --surface-alt: #1d2a5c;
+  --border: #2a3870;
+  --text: #eef1fa;
+  --text-muted: #9aa4c7;
 
-  /* Brand colors */
-  --brand-primary: #0d7377;     /* teal - trust, medical */
-  --brand-secondary: #14a098;   /* lighter teal */
-  --brand-accent: #ff7e67;      /* coral - warmth, care */
+  /* Brand colors (from logo) */
+  --brand-primary: #1a2e6b;     /* navy */
+  --brand-secondary: #2a4aa8;   /* lighter navy for gradient */
+  --brand-accent: #c3e234;      /* lime green */
+  --brand-accent-dark: #a8c61d;
 
-  --accent: #14a098;
-  --accent-hover: #17b8ae;
-  --accent-soft: rgba(20, 160, 152, 0.14);
+  --accent: #c3e234;
+  --accent-hover: #d4ee4d;
+  --accent-soft: rgba(195, 226, 52, 0.14);
   --success: #34d399;
   --success-soft: rgba(52, 211, 153, 0.14);
   --danger: #f87171;
@@ -39,28 +40,29 @@
 
 /* ─── LIGHT THEME ─── */
 [data-theme="light"] {
-  --bg: #f4f8f9;
+  --bg: #f5f7fb;
   --surface: #ffffff;
-  --surface-alt: #eef5f5;
-  --border: #d4e3e4;
-  --text: #0a1a1c;
-  --text-muted: #5a7278;
+  --surface-alt: #eff2f9;
+  --border: #d8deec;
+  --text: #0d1538;
+  --text-muted: #5a6890;
 
-  --brand-primary: #0d7377;
-  --brand-secondary: #14a098;
-  --brand-accent: #ff7e67;
+  --brand-primary: #1a2e6b;
+  --brand-secondary: #2a4aa8;
+  --brand-accent: #8fb020;    /* darker lime for light mode contrast */
+  --brand-accent-dark: #6f8915;
 
-  --accent: #0d7377;
-  --accent-hover: #14a098;
-  --accent-soft: rgba(13, 115, 119, 0.10);
+  --accent: #1a2e6b;
+  --accent-hover: #2a4aa8;
+  --accent-soft: rgba(26, 46, 107, 0.10);
   --success: #059669;
   --success-soft: rgba(5, 150, 105, 0.12);
   --danger: #dc2626;
   --danger-soft: rgba(220, 38, 38, 0.10);
   --warn: #d97706;
   --warn-soft: rgba(217, 119, 6, 0.12);
-  --modal-bg: rgba(10, 26, 28, 0.5);
-  --shadow-card: 0 1px 3px rgba(10, 26, 28, 0.06), 0 1px 2px rgba(10, 26, 28, 0.04);
+  --modal-bg: rgba(13, 21, 56, 0.5);
+  --shadow-card: 0 1px 3px rgba(13, 21, 56, 0.06), 0 1px 2px rgba(13, 21, 56, 0.04);
 }
 
 * { box-sizing: border-box; }
@@ -87,6 +89,13 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--brand-primary) !important;
   outline: none;
   box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+  border-color: var(--brand-accent) !important;
+  box-shadow: 0 0 0 3px rgba(195, 226, 52, 0.15);
 }
 
 button { cursor: pointer; }
@@ -120,12 +129,27 @@ button:hover { opacity: 0.9; }
   white-space: nowrap;
 }
 
-.btn-primary {
+/* Primary button uses navy in light mode, lime in dark mode */
+[data-theme="light"] .btn-primary {
   background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
   color: #fff;
-  box-shadow: 0 2px 8px rgba(13, 115, 119, 0.25);
+  box-shadow: 0 2px 8px rgba(26, 46, 107, 0.25);
 }
-.btn-primary:hover { box-shadow: 0 4px 12px rgba(13, 115, 119, 0.35); opacity: 1; }
+[data-theme="light"] .btn-primary:hover {
+  box-shadow: 0 4px 14px rgba(26, 46, 107, 0.35);
+  opacity: 1;
+}
+
+[data-theme="dark"] .btn-primary {
+  background: var(--brand-accent);
+  color: var(--brand-primary);
+  box-shadow: 0 2px 8px rgba(195, 226, 52, 0.25);
+}
+[data-theme="dark"] .btn-primary:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 4px 14px rgba(195, 226, 52, 0.35);
+  opacity: 1;
+}
 
 .btn-secondary { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); }
 .btn-danger { background: var(--danger-soft); color: var(--danger); }
@@ -150,7 +174,7 @@ button:hover { opacity: 0.9; }
 select.input {
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%238ca0a4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%239aa4c7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 36px;
@@ -179,11 +203,12 @@ select.input:disabled { opacity: 0.5; cursor: not-allowed; }
   display: inline-block;
 }
 
-.badge-accent { background: var(--accent-soft); color: var(--accent); }
+.badge-accent { background: var(--accent-soft); color: var(--brand-accent); }
+[data-theme="light"] .badge-accent { color: var(--brand-primary); background: rgba(26, 46, 107, 0.10); }
 .badge-success { background: var(--success-soft); color: var(--success); }
 .badge-danger { background: var(--danger-soft); color: var(--danger); }
 .badge-warn { background: var(--warn-soft); color: var(--warn); }
-.badge-coral { background: rgba(255, 126, 103, 0.15); color: var(--brand-accent); }
+.badge-lime { background: rgba(195, 226, 52, 0.15); color: var(--brand-accent); }
 
 /* ─── Sidebar ─── */
 .sidebar {
@@ -225,8 +250,13 @@ select.input:disabled { opacity: 0.5; cursor: not-allowed; }
 .sidebar-item.active {
   background: var(--accent-soft);
   color: var(--accent);
-  border-left-color: var(--brand-primary);
+  border-left-color: var(--brand-accent);
   font-weight: 700;
+}
+
+[data-theme="light"] .sidebar-item.active {
+  border-left-color: var(--brand-primary);
+  color: var(--brand-primary);
 }
 
 .main-content {
@@ -283,6 +313,11 @@ select.input:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
 .theme-toggle:hover {
+  color: var(--brand-accent);
+  border-color: var(--brand-accent);
+}
+
+[data-theme="light"] .theme-toggle:hover {
   color: var(--brand-primary);
   border-color: var(--brand-primary);
 }
@@ -359,13 +394,18 @@ td {
   text-align: left;
 }
 
-.test-option:hover { border-color: var(--brand-primary); }
+.test-option:hover { border-color: var(--brand-accent); }
 
 .test-option.selected {
   background: var(--accent-soft);
-  border-color: var(--brand-primary);
+  border-color: var(--brand-accent);
   color: var(--accent);
   font-weight: 700;
+}
+
+[data-theme="light"] .test-option.selected {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
 }
 
 /* ─── Responsive grids ─── */
@@ -409,6 +449,8 @@ td {
   text-transform: uppercase;
   margin-bottom: 8px;
 }
+
+[data-theme="light"] .login-hero { color: var(--brand-primary); }
 
 .login-tag {
   color: var(--text-muted);

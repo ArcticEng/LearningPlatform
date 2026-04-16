@@ -1,12 +1,12 @@
 {
-  "name": "ACT Academy",
-  "short_name": "ACT Academy",
-  "description": "ACT caregiver training platform",
+  "name": "Aloe Care Trainify",
+  "short_name": "Aloe Care",
+  "description": "Dementia care training platform",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a1a1c",
-  "theme_color": "#0d7377",
+  "background_color": "#0d1538",
+  "theme_color": "#1a2e6b",
   "icons": [
     {
       "src": "/icon.svg",

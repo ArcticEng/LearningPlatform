@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
+import Logo from "@/components/Logo";
 
 const api = {
   get: (url) => fetch(url).then(r => r.json()),
@@ -259,19 +260,10 @@ export default function AdminPage() {
 
   const Brand = (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <div style={{
-        width: 36, height: 36, borderRadius: 10,
-        background: "linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        color: "#fff", fontWeight: 800, fontSize: 13, letterSpacing: "-0.04em",
-        fontFamily: "'Montserrat', sans-serif",
-        boxShadow: "0 2px 8px rgba(13, 115, 119, 0.25)",
-      }}>
-        ACT
-      </div>
+      <Logo size={40}/>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'Montserrat', sans-serif" }}>ACT Academy</div>
-        <div style={{ fontSize: 10, color: "var(--brand-accent)", fontWeight: 700, letterSpacing: "0.1em" }}>ADMIN PORTAL</div>
+        <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'Montserrat', sans-serif", lineHeight: 1.15 }}>Aloe Care Trainify</div>
+        <div style={{ fontSize: 10, color: "var(--brand-accent)", fontWeight: 700, letterSpacing: "0.1em", marginTop: 2 }}>ADMIN PORTAL</div>
       </div>
     </div>
   );

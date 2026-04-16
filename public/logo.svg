@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Aloe Care Trainify logo: two hands clasped in a circle -->
+  <!-- Navy left half (bottom-left hand) -->
+  <path d="
+    M 100 20
+    A 80 80 0 0 0 100 180
+    L 100 140
+    A 40 40 0 0 1 100 60
+    Z
+  " fill="#1a2e6b"/>
+
+  <!-- Lime green right half (top-right hand) -->
+  <path d="
+    M 100 20
+    A 80 80 0 0 1 100 180
+    L 100 140
+    A 40 40 0 0 0 100 60
+    Z
+  " fill="#c3e234"/>
+
+  <!-- Navy fingers on green side (top right area) -->
+  <g fill="#1a2e6b">
+    <rect x="92" y="24" width="4" height="18" rx="2"/>
+    <rect x="100" y="22" width="4" height="20" rx="2"/>
+    <rect x="108" y="24" width="4" height="18" rx="2"/>
+    <rect x="116" y="28" width="4" height="16" rx="2"/>
+  </g>
+
+  <!-- Green fingers on navy side (bottom left area) -->
+  <g fill="#c3e234">
+    <rect x="80" y="158" width="4" height="18" rx="2"/>
+    <rect x="88" y="158" width="4" height="20" rx="2"/>
+    <rect x="96" y="158" width="4" height="18" rx="2"/>
+    <rect x="104" y="156" width="4" height="16" rx="2"/>
+  </g>
+
+  <!-- White centre (inner circle) -->
+  <circle cx="100" cy="100" r="40" fill="#ffffff"/>
+
+  <!-- ALOE CARE TRAINIFY arc text -->
+  <defs>
+    <path id="arc" d="M 100 20 A 80 80 0 0 1 100 180" fill="none"/>
+  </defs>
+  <text fill="#1a2e6b" font-family="Montserrat, Inter, sans-serif" font-weight="800" font-size="14" letter-spacing="1.5">
+    <textPath href="#arc" startOffset="12%">ALOE CARE TRAINIFY</textPath>
+  </text>
+</svg>

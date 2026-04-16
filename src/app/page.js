@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
+import Logo from "@/components/Logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,21 +40,13 @@ export default function LoginPage() {
       <div style={{ position: "absolute", top: 20, right: 20 }}><ThemeToggle /></div>
 
       <div style={{ maxWidth: 440, width: "100%", textAlign: "center" }}>
-        <div style={{ marginBottom: 36 }}>
-          <div style={{
-            width: 84, height: 84, borderRadius: 22,
-            background: "linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 20px",
-            boxShadow: "0 10px 40px rgba(13, 115, 119, 0.35)",
-            color: "#fff", fontFamily: "'Montserrat', sans-serif",
-            fontWeight: 800, fontSize: 28, letterSpacing: "-0.04em",
-          }}>
-            ACT
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ margin: "0 auto 16px", display: "inline-flex" }}>
+            <Logo size={140}/>
           </div>
           <div className="login-hero">We Empower · We Innovate · We Care</div>
-          <h1 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 32, fontWeight: 800, margin: 0, letterSpacing: "-0.03em" }}>
-            ACT Academy
+          <h1 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 30, fontWeight: 800, margin: 0, letterSpacing: "-0.03em" }}>
+            Aloe Care Trainify
           </h1>
           <p className="login-tag">Dementia Care Training Platform</p>
         </div>

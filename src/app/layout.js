@@ -12,13 +12,13 @@ const themeScript = `
 `;
 
 export const metadata = {
-  title: "ACT Academy — Dementia Care Training",
-  description: "ACT caregiver training platform — empowering carers with skills to deliver quality dementia care.",
+  title: "Aloe Care Trainify — Dementia Care Training",
+  description: "Empowering carers with the skills and knowledge to deliver quality dementia care.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "ACT Academy",
+    title: "Aloe Care Trainify",
   },
   formatDetection: { telephone: false },
 };
@@ -28,8 +28,8 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 5,
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0a1a1c" },
-    { media: "(prefers-color-scheme: light)", color: "#f4f8f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d1538" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f7fb" },
   ],
 };
 
