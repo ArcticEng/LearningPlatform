@@ -29,6 +29,7 @@ function Icon({ name, size = 20 }) {
     award: "M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01z",
     back: "M19 12H5M12 19l-7-7 7-7",
     menu: "M3 12h18M3 6h18M3 18h18",
+    download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3",
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -82,6 +83,14 @@ export default function AdminPage() {
   const [testModule, setTestModule] = useState(null);
   const [testForm, setTestForm] = useState({ questions: [{ question: "", options: ["", "", "", ""], correct: 0 }] });
   const [newPass, setNewPass] = useState("");
+
+  // Report filters
+  const [filterCourse, setFilterCourse] = useState("");
+  const [filterModule, setFilterModule] = useState("");
+  const [filterUser, setFilterUser] = useState("");
+
+  // Reset module filter when course changes to avoid stale selection
+  useEffect(() => { setFilterModule(""); }, [filterCourse]);
 
   const fileRef = useRef(null);
 
@@ -539,38 +548,142 @@ export default function AdminPage() {
         )}
 
         {/* RESULTS */}
-        {view === "results" && (
-          <div>
-            <h1 className="page-title">Test Results</h1>
-            {results.length === 0 ? (
-              <div className="card" style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
-                <p style={{ fontSize: 18, fontWeight: 600, color: "var(--text)" }}>No results yet</p>
-                <p>Results appear here when learners complete tests</p>
-              </div>
-            ) : (
-              <div className="card">
-                <div className="table-wrap">
-                  <table>
-                    <thead><tr><th>Learner</th><th>ID</th><th>Course</th><th>Module</th><th>Score</th><th>%</th><th>Date</th></tr></thead>
-                    <tbody>
-                      {results.map(r => (
-                        <tr key={r.id}>
-                          <td style={{ fontWeight: 600 }}>{r.user.name}</td>
-                          <td style={{ fontSize: 13, color: "var(--text-muted)" }}>{r.user.idNumber}</td>
-                          <td>{r.course.title}</td>
-                          <td>{r.module.title}</td>
-                          <td>{r.score}/{r.total}</td>
-                          <td><span className={`badge ${r.percentage >= 70 ? "badge-success" : r.percentage >= 50 ? "badge-warn" : "badge-danger"}`}>{r.percentage}%</span></td>
-                          <td style={{ color: "var(--text-muted)", fontSize: 13, whiteSpace: "nowrap" }}>{new Date(r.completedAt).toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+        {view === "results" && (() => {
+          // Derived data
+          const allModules = courses.flatMap(c => c.modules.map(m => ({ id: m.id, title: m.title, courseId: c.id, courseTitle: c.title })));
+          const availableModules = filterCourse ? allModules.filter(m => m.courseId === filterCourse) : allModules;
+
+          const filtered = results.filter(r => {
+            if (filterCourse && r.courseId !== filterCourse) return false;
+            if (filterModule && r.moduleId !== filterModule) return false;
+            if (filterUser && r.userId !== filterUser) return false;
+            return true;
+          });
+
+          // Stats on filtered set
+          const uniqueLearners = new Set(filtered.map(r => r.userId)).size;
+          const avgScore = filtered.length ? Math.round(filtered.reduce((a, r) => a + r.percentage, 0) / filtered.length) : 0;
+          const passCount = filtered.filter(r => r.percentage >= 70).length;
+          const passRate = filtered.length ? Math.round((passCount / filtered.length) * 100) : 0;
+
+          const hasFilters = filterCourse || filterModule || filterUser;
+
+          const buildQuery = (extra = {}) => {
+            const p = new URLSearchParams();
+            if (filterCourse) p.append("courseId", filterCourse);
+            if (filterModule) p.append("moduleId", filterModule);
+            if (filterUser) p.append("userId", filterUser);
+            Object.entries(extra).forEach(([k, v]) => p.append(k, v));
+            return p.toString();
+          };
+
+          const exportCsv = (detailed = false) => {
+            const q = buildQuery(detailed ? { detailed: "1" } : {});
+            window.location.href = `/api/results/export${q ? "?" + q : ""}`;
+          };
+
+          const clearFilters = () => { setFilterCourse(""); setFilterModule(""); setFilterUser(""); };
+
+          return (
+            <div>
+              <div className="page-header">
+                <h1 className="page-title" style={{ margin: 0 }}>Test Results</h1>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button className="btn btn-secondary" onClick={() => exportCsv(true)} disabled={filtered.length === 0}>
+                    <Icon name="download" size={16}/> Detailed CSV
+                  </button>
+                  <button className="btn btn-primary" onClick={() => exportCsv(false)} disabled={filtered.length === 0}>
+                    <Icon name="download" size={16}/> Export CSV
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
-        )}
+
+              {/* Filters */}
+              <div className="card" style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Filter Results</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+                  <div>
+                    <label className="label">Course</label>
+                    <select className="input" value={filterCourse} onChange={e => setFilterCourse(e.target.value)}>
+                      <option value="">All courses</option>
+                      {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Module</label>
+                    <select className="input" value={filterModule} onChange={e => setFilterModule(e.target.value)} disabled={availableModules.length === 0}>
+                      <option value="">All modules</option>
+                      {availableModules.map(m => <option key={m.id} value={m.id}>{filterCourse ? m.title : `${m.courseTitle} — ${m.title}`}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Learner</label>
+                    <select className="input" value={filterUser} onChange={e => setFilterUser(e.target.value)}>
+                      <option value="">All learners</option>
+                      {learners.map(l => <option key={l.id} value={l.id}>{l.name} ({l.idNumber})</option>)}
+                    </select>
+                  </div>
+                </div>
+                {hasFilters && (
+                  <div style={{ marginTop: 12 }}>
+                    <button className="btn btn-ghost" onClick={clearFilters}><Icon name="x" size={14}/> Clear filters</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Stats */}
+              {filtered.length > 0 && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 16 }}>
+                  <div className="card" style={{ padding: 16 }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{filtered.length}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>Attempts</div>
+                  </div>
+                  <div className="card" style={{ padding: 16 }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{uniqueLearners}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>Unique learners</div>
+                  </div>
+                  <div className="card" style={{ padding: 16 }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1, color: avgScore >= 70 ? "var(--success)" : avgScore >= 50 ? "var(--warn)" : "var(--danger)" }}>{avgScore}%</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>Average score</div>
+                  </div>
+                  <div className="card" style={{ padding: 16 }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1, color: passRate >= 70 ? "var(--success)" : "var(--warn)" }}>{passRate}%</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>Pass rate ({passCount}/{filtered.length})</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Table */}
+              {filtered.length === 0 ? (
+                <div className="card" style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
+                  <p style={{ fontSize: 18, fontWeight: 600, color: "var(--text)" }}>{hasFilters ? "No results match these filters" : "No results yet"}</p>
+                  <p>{hasFilters ? "Try clearing filters to see all results" : "Results appear here when learners complete tests"}</p>
+                </div>
+              ) : (
+                <div className="card">
+                  <div className="table-wrap">
+                    <table>
+                      <thead><tr><th>Learner</th><th>ID</th><th>Course</th><th>Module</th><th>Score</th><th>%</th><th>Date</th></tr></thead>
+                      <tbody>
+                        {filtered.map(r => (
+                          <tr key={r.id}>
+                            <td style={{ fontWeight: 600 }}>{r.user.name}</td>
+                            <td style={{ fontSize: 13, color: "var(--text-muted)" }}>{r.user.idNumber}</td>
+                            <td>{r.course.title}</td>
+                            <td>{r.module.title}</td>
+                            <td>{r.score}/{r.total}</td>
+                            <td><span className={`badge ${r.percentage >= 70 ? "badge-success" : r.percentage >= 50 ? "badge-warn" : "badge-danger"}`}>{r.percentage}%</span></td>
+                            <td style={{ color: "var(--text-muted)", fontSize: 13, whiteSpace: "nowrap" }}>{new Date(r.completedAt).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
