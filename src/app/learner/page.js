@@ -96,11 +96,15 @@ export default function LearnerPage() {
 
   if (!user) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "var(--text-muted)" }}>Loading…</div>;
 
+  // ThemeProvider wrapper for ALL views
+  const theme = <ThemeProvider tenant={tenant} />;
+
   // ── TAKING TEST ──
   if (takingTest) {
     const test = takingTest.test;
     const allAnswered = test.questions.every((_, i) => testAnswers[i] !== undefined);
     return (
+      <>{theme}
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <button className="btn btn-ghost" style={{ color: "var(--accent)" }} onClick={() => { setTakingTest(null); setTestAnswers({}); }}>
@@ -139,6 +143,7 @@ export default function LearnerPage() {
           <Icon name="check" size={18}/> Submit Test
         </button>
       </div>
+      </>
     );
   }
 
@@ -146,6 +151,7 @@ export default function LearnerPage() {
   if (testResult) {
     const passed = testResult.percentage >= 70;
     return (
+      <>{theme}
       <div style={{ maxWidth: 520, margin: "0 auto", padding: "60px 20px", textAlign: "center", position: "relative" }}>
         <div style={{ position: "absolute", top: 20, right: 20 }}>
           <ThemeToggle />
@@ -178,12 +184,14 @@ export default function LearnerPage() {
           </button>
         </div>
       </div>
+      </>
     );
   }
 
   // ── VIEW MODULE (PDF + Test button) ──
   if (activeModule) {
     return (
+      <>{theme}
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <button className="btn btn-ghost" style={{ color: "var(--accent)" }} onClick={() => setActiveModule(null)}>
@@ -220,12 +228,14 @@ export default function LearnerPage() {
           </div>
         )}
       </div>
+      </>
     );
   }
 
   // ── COURSE MODULES LIST ──
   if (activeCourse) {
     return (
+      <>{theme}
       <div style={{ maxWidth: 800, margin: "0 auto", padding: "24px 16px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <button className="btn btn-ghost" style={{ color: "var(--accent)" }} onClick={() => setActiveCourse(null)}>
@@ -277,6 +287,7 @@ export default function LearnerPage() {
           </div>
         )}
       </div>
+      </>
     );
   }
 
