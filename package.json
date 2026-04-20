@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "npx prisma db push --skip-generate --accept-data-loss && node prisma/seed.js && next start",
+    "start": "node scripts/db-setup.js && next start",
     "db:seed": "node prisma/seed.js",
     "db:push": "npx prisma db push",
     "db:studio": "npx prisma studio",
