@@ -10,6 +10,26 @@ const themeScript = `
   } catch(e) {
     document.documentElement.dataset.theme = 'dark';
   }
+  // Global error reporter
+  window.onerror = function(msg, src, line, col, err) {
+    try {
+      fetch('/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level: 'error', source: 'client', path: window.location.pathname, message: msg, details: (err && err.stack) || (src + ':' + line) })
+      }).catch(function(){});
+    } catch(e) {}
+  };
+  window.addEventListener('unhandledrejection', function(e) {
+    try {
+      var msg = e.reason ? (e.reason.message || String(e.reason)) : 'Unhandled promise rejection';
+      fetch('/api/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level: 'error', source: 'client', path: window.location.pathname, message: msg, details: e.reason && e.reason.stack || '' })
+      }).catch(function(){});
+    } catch(ex) {}
+  });
 })();
 `;
 

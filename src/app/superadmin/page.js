@@ -82,6 +82,10 @@ export default function SuperAdminPage() {
   const [settingsForm, setSettingsForm] = useState(null);
   const [showAddAdmin, setShowAddAdmin] = useState(null);
   const [adminForm, setAdminForm] = useState({ name: "", idNumber: "", password: "" });
+  const [logs, setLogs] = useState([]);
+  const [logCounts, setLogCounts] = useState({ total: 0, error: 0, warn: 0, info: 0 });
+  const [logFilter, setLogFilter] = useState({ level: "", source: "" });
+  const [expandedLog, setExpandedLog] = useState(null);
   const logoRef = useRef(null);
 
   const loadData = useCallback(async () => {
@@ -100,6 +104,15 @@ export default function SuperAdminPage() {
     setTenants(all.filter(t => t.slug !== "_system"));
   }, []);
 
+  const loadLogs = useCallback(async () => {
+    const params = new URLSearchParams();
+    if (logFilter.level) params.set("level", logFilter.level);
+    if (logFilter.source) params.set("source", logFilter.source);
+    const data = await api.get(`/api/superadmin/logs?${params}`);
+    setLogs(data.logs || []);
+    setLogCounts(data.counts || { total: 0, error: 0, warn: 0, info: 0 });
+  }, [logFilter]);
+
   useEffect(() => {
     api.get("/api/auth").then(d => {
       if (!d.user || d.user.role !== "superadmin") { router.push("/"); return; }
@@ -107,6 +120,10 @@ export default function SuperAdminPage() {
       loadData();
     });
   }, [router, loadData]);
+
+  useEffect(() => {
+    if (view === "logs") loadLogs();
+  }, [view, loadLogs]);
 
   const logout = async () => {
     await fetch("/api/auth", { method: "DELETE" });
@@ -120,6 +137,13 @@ export default function SuperAdminPage() {
     setForm({ ...defaultTenantForm });
     setShowCreate(false);
     loadData();
+  };
+
+  const clearLogs = async (olderThanDays) => {
+    const msg = olderThanDays ? `Clear logs older than ${olderThanDays} days?` : "Clear ALL logs?";
+    if (!confirm(msg)) return;
+    await api.del("/api/superadmin/logs", olderThanDays ? { olderThanDays } : {});
+    loadLogs();
   };
 
   const updateTenant = async () => {
@@ -271,6 +295,9 @@ export default function SuperAdminPage() {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button className={`btn btn-sm ${view === "tenants" ? "btn-primary" : "btn-secondary"}`} onClick={() => setView("tenants")}>Tenants</button>
+          <button className={`btn btn-sm ${view === "logs" ? "btn-primary" : "btn-secondary"}`} onClick={() => setView("logs")}>
+            Logs{logCounts.error > 0 ? ` (${logCounts.error})` : ""}
+          </button>
           <button className={`btn btn-sm ${view === "settings" ? "btn-primary" : "btn-secondary"}`} onClick={() => setView("settings")}>Settings</button>
           <ThemeToggle />
           <button className="btn btn-ghost" style={{ color: "var(--danger)" }} onClick={logout}><Icon name="out" size={16} /> Sign Out</button>
@@ -380,6 +407,75 @@ export default function SuperAdminPage() {
             </button>
           </div>
         </Modal>
+      </div>
+      )}
+
+      {/* LOGS */}
+      {view === "logs" && (
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
+        <div className="page-header">
+          <div>
+            <h1 className="page-title" style={{ margin: 0 }}>System Logs</h1>
+            <p style={{ color: "var(--text-muted)", margin: "4px 0 0", fontSize: 14 }}>
+              {logCounts.error} errors · {logCounts.warn} warnings · {logCounts.info} info · {logCounts.total} total
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-sm btn-secondary" onClick={loadLogs}>Refresh</button>
+            <button className="btn btn-sm btn-danger" onClick={() => clearLogs()}>Clear All</button>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="card" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", padding: "12px 16px", marginBottom: 16 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>Filter:</span>
+          <select className="input" style={{ width: "auto", minWidth: 120 }} value={logFilter.level} onChange={e => setLogFilter(p => ({ ...p, level: e.target.value }))}>
+            <option value="">All Levels</option>
+            <option value="error">Errors</option>
+            <option value="warn">Warnings</option>
+            <option value="info">Info</option>
+          </select>
+          <select className="input" style={{ width: "auto", minWidth: 120 }} value={logFilter.source} onChange={e => setLogFilter(p => ({ ...p, source: e.target.value }))}>
+            <option value="">All Sources</option>
+            <option value="api">API</option>
+            <option value="client">Client</option>
+            <option value="system">System</option>
+          </select>
+        </div>
+
+        {logs.length === 0 ? (
+          <div className="card" style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
+            <p style={{ fontSize: 18, fontWeight: 600, color: "var(--text)" }}>No logs</p>
+            <p>System is running clean</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {logs.map(log => (
+              <div key={log.id} className="card" style={{ padding: "12px 16px", cursor: "pointer" }} onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{
+                    padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+                    background: log.level === "error" ? "var(--danger-soft)" : log.level === "warn" ? "var(--warn-soft)" : "var(--accent-soft)",
+                    color: log.level === "error" ? "var(--danger)" : log.level === "warn" ? "var(--warn)" : "var(--accent)",
+                  }}>{log.level}</span>
+                  <span className="badge" style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>{log.source}</span>
+                  {log.path && <code style={{ fontSize: 12, color: "var(--text-muted)", background: "var(--surface-alt)", padding: "2px 6px", borderRadius: 4 }}>{log.path}</code>}
+                  <span style={{ flex: 1, fontSize: 14, fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{log.message}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{new Date(log.createdAt).toLocaleString()}</span>
+                </div>
+                {expandedLog === log.id && (
+                  <div style={{ marginTop: 12, padding: 12, background: "var(--surface-alt)", borderRadius: 8, fontSize: 13 }}>
+                    {log.tenantId && <div style={{ marginBottom: 6 }}><strong>Tenant:</strong> {log.tenantId}</div>}
+                    {log.userId && <div style={{ marginBottom: 6 }}><strong>User:</strong> {log.userId}</div>}
+                    {log.details && (
+                      <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", color: "var(--text-muted)", fontSize: 12, maxHeight: 300, overflow: "auto" }}>{log.details}</pre>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       )}
 
