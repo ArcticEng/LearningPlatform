@@ -44,6 +44,27 @@ export async function POST(req) {
   return NextResponse.json({ course }, { status: 201 });
 }
 
+// PUT /api/courses - update course
+export async function PUT(req) {
+  const user = await getSession();
+  if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id, title, description } = await req.json();
+  if (!id || !title) return NextResponse.json({ error: "ID and title required" }, { status: 400 });
+
+  const course = await prisma.course.findFirst({ where: { id, tenantId: user.tenantId } });
+  if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 });
+
+  const updated = await prisma.course.update({
+    where: { id },
+    data: { title, description: description || "" },
+  });
+
+  return NextResponse.json({ course: updated });
+}
+
 // DELETE /api/courses
 export async function DELETE(req) {
   const user = await getSession();

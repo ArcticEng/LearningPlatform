@@ -31,6 +31,7 @@ function Icon({ name, size = 20 }) {
     award: "M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01z",
     back: "M19 12H5M12 19l-7-7 7-7",
     menu: "M3 12h18M3 6h18M3 18h18",
+    edit: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7",
     download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3",
   };
   return (
@@ -38,6 +39,7 @@ function Icon({ name, size = 20 }) {
       <path d={d[name] || ""}/>
       {name === "users" && <><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></>}
       {name === "out" && <><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>}
+      {name === "edit" && <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />}
       {name === "upload" && <><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>}
       {name === "file" && <polyline points="13 2 13 9 20 9"/>}
       {name === "clip" && <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>}
@@ -75,6 +77,7 @@ export default function AdminPage() {
   // Modals
   const [showAddLearner, setShowAddLearner] = useState(false);
   const [showAddCourse, setShowAddCourse] = useState(false);
+  const [showEditCourse, setShowEditCourse] = useState(null);
   const [showAddModule, setShowAddModule] = useState(false);
   const [showTestBuilder, setShowTestBuilder] = useState(false);
   const [showResetPass, setShowResetPass] = useState(null);
@@ -212,6 +215,14 @@ export default function AdminPage() {
     await api.post("/api/courses", courseForm);
     setCourseForm({ title: "", description: "" });
     setShowAddCourse(false);
+    loadData();
+  };
+
+  const updateCourse = async () => {
+    if (!showEditCourse || !courseForm.title) return;
+    await api.put("/api/courses", { id: showEditCourse.id, ...courseForm });
+    setCourseForm({ title: "", description: "" });
+    setShowEditCourse(null);
     loadData();
   };
 
@@ -478,7 +489,10 @@ export default function AdminPage() {
                     <p style={{ color: "var(--text-muted)", fontSize: 14, margin: "0 0 16px" }}>{c.description || "No description"}</p>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span className="badge badge-accent">{c.modules.length} modules</span>
-                      <button className="btn btn-sm btn-danger" onClick={e => { e.stopPropagation(); deleteCourse(c.id); }}><Icon name="trash" size={14}/></button>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); setCourseForm({ title: c.title, description: c.description }); setShowEditCourse(c); }}><Icon name="edit" size={14}/></button>
+                        <button className="btn btn-sm btn-danger" onClick={e => { e.stopPropagation(); deleteCourse(c.id); }}><Icon name="trash" size={14}/></button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -490,6 +504,14 @@ export default function AdminPage() {
                 <div><label className="label">Course Title</label><input className="input" value={courseForm.title} onChange={e => setCourseForm(p => ({ ...p, title: e.target.value }))}/></div>
                 <div><label className="label">Description</label><textarea className="input" style={{ minHeight: 80 }} value={courseForm.description} onChange={e => setCourseForm(p => ({ ...p, description: e.target.value }))}/></div>
                 <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={addCourse}><Icon name="plus" size={16}/> Create Course</button>
+              </div>
+            </Modal>
+
+            <Modal open={!!showEditCourse} onClose={() => { setShowEditCourse(null); setCourseForm({ title: "", description: "" }); }} title="Edit Course">
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div><label className="label">Course Title</label><input className="input" value={courseForm.title} onChange={e => setCourseForm(p => ({ ...p, title: e.target.value }))}/></div>
+                <div><label className="label">Description</label><textarea className="input" style={{ minHeight: 80 }} value={courseForm.description} onChange={e => setCourseForm(p => ({ ...p, description: e.target.value }))}/></div>
+                <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={updateCourse}><Icon name="check" size={16}/> Save Changes</button>
               </div>
             </Modal>
           </div>
