@@ -58,9 +58,21 @@ export async function DELETE(req) {
   }
 
   const { id } = await req.json();
-  const mod = await prisma.module.findUnique({ where: { id } });
 
-  if (mod?.pdfPath) {
+  // Verify module belongs to user's tenant via its course
+  const mod = await prisma.module.findUnique({
+    where: { id },
+    include: { course: { select: { tenantId: true } } },
+  });
+
+  if (!mod) return NextResponse.json({ error: "Module not found" }, { status: 404 });
+
+  if (user.tenantId && mod.course.tenantId !== user.tenantId) {
+    return NextResponse.json({ error: "Module not found" }, { status: 404 });
+  }
+
+  // Clean up PDF file
+  if (mod.pdfPath) {
     try {
       const filename = path.basename(mod.pdfPath);
       await unlink(path.join(UPLOAD_DIR, filename));

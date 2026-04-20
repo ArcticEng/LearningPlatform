@@ -5,11 +5,24 @@ import { getSession } from "@/lib/auth";
 // POST /api/tests - create or replace test for a module
 export async function POST(req) {
   const user = await getSession();
-  if (!user || (user.role !== "admin" && user.role !== "superadmin")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { moduleId, questions } = await req.json();
   if (!moduleId || !questions?.length) {
     return NextResponse.json({ error: "moduleId and questions required" }, { status: 400 });
+  }
+
+  // Verify module belongs to user's tenant via its course
+  if (user.tenantId) {
+    const mod = await prisma.module.findUnique({
+      where: { id: moduleId },
+      include: { course: { select: { tenantId: true } } },
+    });
+    if (!mod || mod.course.tenantId !== user.tenantId) {
+      return NextResponse.json({ error: "Module not found" }, { status: 404 });
+    }
   }
 
   // Delete existing test for this module if any

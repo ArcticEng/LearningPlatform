@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { prisma } from "./db";
 
 const SECRET = process.env.JWT_SECRET || "dev-secret";
@@ -21,19 +21,61 @@ export function verifyToken(token) {
   }
 }
 
+// Extract tenant slug from Referer header (e.g. /scarletrose/admin -> "scarletrose")
+function getTenantSlugFromReferer() {
+  try {
+    const headerStore = headers();
+    const referer = headerStore.get("referer") || "";
+    if (!referer) return null;
+    const url = new URL(referer);
+    const segments = url.pathname.split("/").filter(Boolean);
+    if (segments.length === 0) return null;
+    const first = segments[0].toLowerCase();
+    // Skip system routes
+    if (["api", "admin", "learner", "superadmin", "_next"].includes(first)) return null;
+    return first;
+  } catch {
+    return null;
+  }
+}
+
+async function findUserFromToken(token) {
+  const payload = verifyToken(token);
+  if (!payload) return null;
+  return prisma.user.findUnique({
+    where: { id: payload.id },
+    select: { id: true, name: true, idNumber: true, role: true, tenantId: true },
+  });
+}
+
 export async function getSession() {
   const cookieStore = cookies();
 
-  // Try all lp_ cookies to find a valid session
+  // 1. Try tenant-specific cookie based on Referer URL
+  const refererSlug = getTenantSlugFromReferer();
+  if (refererSlug) {
+    const token = cookieStore.get(`lp_${refererSlug}`)?.value;
+    if (token) {
+      const user = await findUserFromToken(token);
+      if (user) return user;
+    }
+  }
+
+  // 2. Try superadmin cookie
+  const superToken = cookieStore.get("lp_super")?.value;
+  if (superToken) {
+    const user = await findUserFromToken(superToken);
+    if (user && user.role === "superadmin") return user;
+  }
+
+  // 3. Fallback: scan all lp_ cookies (for backward compat / direct /admin access)
   const allCookies = cookieStore.getAll();
   for (const c of allCookies) {
     if (!c.name.startsWith("lp_")) continue;
-    const payload = verifyToken(c.value);
-    if (!payload) continue;
-    const user = await prisma.user.findUnique({
-      where: { id: payload.id },
-      select: { id: true, name: true, idNumber: true, role: true, tenantId: true },
-    });
+    // Skip ones we already tried
+    if (c.name === "lp_super") continue;
+    if (refererSlug && c.name === `lp_${refererSlug}`) continue;
+    const user = await findUserFromToken(c.value);
     if (user) return user;
   }
   return null;
@@ -44,13 +86,7 @@ export async function getSessionForTenant(tenantSlug) {
   const name = cookieName(tenantSlug);
   const token = cookieStore.get(name)?.value;
   if (!token) return null;
-  const payload = verifyToken(token);
-  if (!payload) return null;
-  const user = await prisma.user.findUnique({
-    where: { id: payload.id },
-    select: { id: true, name: true, idNumber: true, role: true, tenantId: true },
-  });
-  return user;
+  return findUserFromToken(token);
 }
 
 export async function getTenant(tenantId) {
