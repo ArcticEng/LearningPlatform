@@ -1,19 +1,36 @@
 "use client";
 import { useState, useEffect } from "react";
 
+function getSlug() {
+  try {
+    const seg = window.location.pathname.split("/").filter(Boolean)[0] || "_root";
+    return ["admin", "learner", "superadmin", "api", "_next"].includes(seg) ? "_root" : seg;
+  } catch { return "_root"; }
+}
+
+function getKey() {
+  return `lp-theme-${getSlug()}`;
+}
+
 export default function ThemeToggle() {
   const [theme, setTheme] = useState("dark");
 
   useEffect(() => {
-    const current = document.documentElement.dataset.theme || "dark";
-    setTheme(current);
+    const key = getKey();
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      setTheme(saved);
+      document.documentElement.dataset.theme = saved;
+    } else {
+      setTheme(document.documentElement.dataset.theme || "dark");
+    }
   }, []);
 
   const toggle = () => {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
     document.documentElement.dataset.theme = next;
-    try { localStorage.setItem("lp-theme", next); } catch {}
+    try { localStorage.setItem(getKey(), next); } catch {}
   };
 
   return (

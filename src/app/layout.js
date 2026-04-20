@@ -3,7 +3,9 @@ import "./globals.css";
 const themeScript = `
 (function(){
   try {
-    var t = localStorage.getItem('lp-theme') || 'dark';
+    var segs = window.location.pathname.split('/').filter(Boolean);
+    var slug = (segs[0] && ['admin','learner','superadmin','api','_next'].indexOf(segs[0]) === -1) ? segs[0] : '_root';
+    var t = localStorage.getItem('lp-theme-' + slug) || 'dark';
     document.documentElement.dataset.theme = t;
   } catch(e) {
     document.documentElement.dataset.theme = 'dark';
