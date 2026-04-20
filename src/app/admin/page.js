@@ -84,6 +84,7 @@ export default function AdminPage() {
   const [testModule, setTestModule] = useState(null);
   const [testForm, setTestForm] = useState({ questions: [{ question: "", options: ["", "", "", ""], correct: 0 }] });
   const [newPass, setNewPass] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
 
   // Report filters
   const [filterCourse, setFilterCourse] = useState("");
@@ -94,6 +95,7 @@ export default function AdminPage() {
   useEffect(() => { setFilterModule(""); }, [filterCourse]);
 
   const fileRef = useRef(null);
+  const importRef = useRef(null);
 
   // Toggle body class for sidebar overlay
   useEffect(() => {
@@ -147,6 +149,45 @@ export default function AdminPage() {
     setLearnerForm({ name: "", idNumber: "", password: "" });
     setShowAddLearner(false);
     loadData();
+  };
+
+  // Import questions from document
+  const handleImportDoc = async (e, mod) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = ""; // reset input
+
+    setImportLoading(true);
+    setTestModule(mod);
+
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/tests/import", { method: "POST", body: form });
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Failed to import questions");
+        setImportLoading(false);
+        return;
+      }
+
+      // Populate test builder with imported questions for review
+      setTestForm({
+        questions: data.questions.map(q => ({
+          question: q.question,
+          options: q.options,
+          correct: q.correct,
+        })),
+      });
+
+      setShowTestBuilder(true);
+      alert(`${data.source === "extracted" ? "Extracted" : "Generated"} ${data.totalExtracted} questions from \"${data.documentName}\". Review and save.`);
+    } catch (err) {
+      alert("Error processing document: " + err.message);
+    }
+
+    setImportLoading(false);
   };
 
   const deleteLearner = async (id) => {
@@ -487,10 +528,14 @@ export default function AdminPage() {
                         </div>
                       </div>
                     </div>
-                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
                       <button className="btn btn-sm" style={{ background: "var(--accent-soft)", color: "var(--accent)" }} onClick={() => openTestBuilder(m)}>
                         <Icon name="clip" size={14}/> {m.test ? "Edit Test" : "Add Test"}
                       </button>
+                      <label className="btn btn-sm btn-secondary" style={{ cursor: importLoading ? "wait" : "pointer", opacity: importLoading ? 0.6 : 1 }}>
+                        <Icon name="upload" size={14}/> {importLoading && testModule?.id === m.id ? "Importing…" : "Import from Doc"}
+                        <input type="file" accept=".docx,.pdf,.txt" style={{ display: "none" }} onChange={(e) => handleImportDoc(e, m)} disabled={importLoading}/>
+                      </label>
                       <button className="btn btn-sm btn-danger" onClick={() => deleteModule(m.id)}><Icon name="trash" size={14}/></button>
                     </div>
                   </div>
