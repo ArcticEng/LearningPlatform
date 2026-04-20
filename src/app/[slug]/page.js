@@ -40,7 +40,7 @@ export default function TenantLoginPage() {
         setLoading(false);
         return;
       }
-      router.push(data.user.role === "admin" ? "/admin" : "/learner");
+      router.push(data.user.role === "admin" ? `/${slug}/admin` : `/${slug}/learner`);
     } catch {
       setError("Connection error. Please try again.");
       setLoading(false);

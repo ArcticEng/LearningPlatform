@@ -128,7 +128,7 @@ export default function AdminPage() {
 
   const logout = async () => {
     await fetch("/api/auth", { method: "DELETE" });
-    router.push("/");
+    router.push(tenant?.slug ? `/${tenant.slug}` : "/");
   };
 
   useEffect(() => {

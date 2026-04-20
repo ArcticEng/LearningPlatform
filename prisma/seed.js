@@ -79,10 +79,10 @@ async function main() {
         slug: "scarletrose",
         name: "Scarlet Rose Beauty",
         tagline: "Nail Technician Training Academy",
-        logoUrl: "",  // can be set later via superadmin
-        colorPrimary: "#8B1A4A",   // deep scarlet rose
-        colorSecondary: "#C75B7A", // soft rose / blush
-        colorAccent: "#D4A574",    // rose gold
+        logoUrl: "/srb-logo.jpg",
+        colorPrimary: "#E875A0",   // rose pink
+        colorSecondary: "#F4A0C0", // lighter pink
+        colorAccent: "#FFD6E8",    // baby pink (matches logo bg)
         fontHeading: "Playfair Display",
         fontBody: "Quicksand",
       },

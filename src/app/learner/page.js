@@ -71,7 +71,7 @@ export default function LearnerPage() {
 
   const logout = async () => {
     await fetch("/api/auth", { method: "DELETE" });
-    router.push("/");
+    router.push(tenant?.slug ? `/${tenant.slug}` : "/");
   };
 
   const navigate = (key) => {
