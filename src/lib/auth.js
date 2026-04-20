@@ -3,7 +3,11 @@ import { cookies } from "next/headers";
 import { prisma } from "./db";
 
 const SECRET = process.env.JWT_SECRET || "dev-secret";
-const COOKIE_NAME = "lp_session";
+
+function cookieName(tenantSlug) {
+  if (!tenantSlug) return "lp_super";
+  return `lp_${tenantSlug}`;
+}
 
 export function signToken(payload) {
   return jwt.sign(payload, SECRET, { expiresIn: "7d" });
@@ -19,7 +23,26 @@ export function verifyToken(token) {
 
 export async function getSession() {
   const cookieStore = cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+
+  // Try all lp_ cookies to find a valid session
+  const allCookies = cookieStore.getAll();
+  for (const c of allCookies) {
+    if (!c.name.startsWith("lp_")) continue;
+    const payload = verifyToken(c.value);
+    if (!payload) continue;
+    const user = await prisma.user.findUnique({
+      where: { id: payload.id },
+      select: { id: true, name: true, idNumber: true, role: true, tenantId: true },
+    });
+    if (user) return user;
+  }
+  return null;
+}
+
+export async function getSessionForTenant(tenantSlug) {
+  const cookieStore = cookies();
+  const name = cookieName(tenantSlug);
+  const token = cookieStore.get(name)?.value;
   if (!token) return null;
   const payload = verifyToken(token);
   if (!payload) return null;
@@ -52,8 +75,9 @@ export async function requireAdmin() {
   return user;
 }
 
-export function setSessionCookie(token) {
-  cookies().set(COOKIE_NAME, token, {
+export function setSessionCookie(token, tenantSlug) {
+  const name = cookieName(tenantSlug);
+  cookies().set(name, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -62,6 +86,7 @@ export function setSessionCookie(token) {
   });
 }
 
-export function clearSessionCookie() {
-  cookies().set(COOKIE_NAME, "", { maxAge: 0, path: "/" });
+export function clearSessionCookie(tenantSlug) {
+  const name = cookieName(tenantSlug);
+  cookies().set(name, "", { maxAge: 0, path: "/" });
 }

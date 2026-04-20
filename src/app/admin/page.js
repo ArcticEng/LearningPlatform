@@ -127,7 +127,7 @@ export default function AdminPage() {
   }, [router, loadData]);
 
   const logout = async () => {
-    await fetch("/api/auth", { method: "DELETE" });
+    await fetch("/api/auth", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tenantSlug: tenant?.slug }) });
     router.push(tenant?.slug ? `/${tenant.slug}` : "/");
   };
 

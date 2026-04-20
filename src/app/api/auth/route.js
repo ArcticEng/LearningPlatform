@@ -16,7 +16,7 @@ export async function GET() {
   return NextResponse.json({ user, tenant });
 }
 
-// POST /api/auth - login (requires tenantSlug for non-superadmin)
+// POST /api/auth - login
 export async function POST(req) {
   const { idNumber, password, tenantSlug } = await req.json();
   if (!idNumber || !password) {
@@ -33,7 +33,7 @@ export async function POST(req) {
     if (!valid) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
 
     const token = signToken({ id: superadmin.id, role: superadmin.role });
-    setSessionCookie(token);
+    setSessionCookie(token, null); // superadmin cookie: lp_super
     return NextResponse.json({
       user: { id: superadmin.id, name: superadmin.name, idNumber: superadmin.idNumber, role: superadmin.role, tenantId: null },
     });
@@ -67,7 +67,7 @@ export async function POST(req) {
   }
 
   const token = signToken({ id: user.id, role: user.role });
-  setSessionCookie(token);
+  setSessionCookie(token, tenantSlug); // tenant-specific cookie: lp_act, lp_scarletrose, etc.
 
   return NextResponse.json({
     user: { id: user.id, name: user.name, idNumber: user.idNumber, role: user.role, tenantId: user.tenantId },
@@ -76,7 +76,13 @@ export async function POST(req) {
 }
 
 // DELETE /api/auth - logout
-export async function DELETE() {
-  clearSessionCookie();
+export async function DELETE(req) {
+  // Clear the specific tenant cookie if slug provided, otherwise clear superadmin
+  try {
+    const { tenantSlug } = await req.json().catch(() => ({}));
+    clearSessionCookie(tenantSlug || null);
+  } catch {
+    clearSessionCookie(null);
+  }
   return NextResponse.json({ ok: true });
 }
