@@ -25,8 +25,6 @@ async function main() {
 
   // ═══════════════════════════════════════
   // 2. TENANT: Aloe Care Trainify (ACT)
-  //    Dementia care training
-  //    Navy + Lime green
   // ═══════════════════════════════════════
   let actTenant = await prisma.tenant.findUnique({ where: { slug: "act" } });
   if (!actTenant) {
@@ -36,20 +34,19 @@ async function main() {
         name: "Aloe Care Trainify",
         tagline: "Dementia Care Training Platform",
         logoUrl: "/logo.jpg",
-        colorPrimary: "#1A2E6B",   // deep navy
-        colorSecondary: "#2A4AA8", // lighter navy
-        colorAccent: "#C3E234",    // lime green
+        colorPrimary: "#1A2E6B",
+        colorSecondary: "#2A4AA8",
+        colorAccent: "#C3E234",
         fontHeading: "Montserrat",
         fontBody: "Nunito",
-        colorBgDark: "#0d1538",  // dark navy
+        colorBgDark: "#0d1538",
       },
     });
-    console.log("✅ Tenant 'act' created (Aloe Care Trainify)");
+    console.log("✅ Tenant 'act' created");
   } else {
     console.log("ℹ️  Tenant 'act' already exists");
   }
 
-  // ACT admin
   const actAdmin = await prisma.user.findFirst({
     where: { idNumber: "admin", tenantId: actTenant.id },
   });
@@ -70,8 +67,6 @@ async function main() {
 
   // ═══════════════════════════════════════
   // 3. TENANT: Scarlet Rose Beauty
-  //    Nail technician training
-  //    Deep rose + blush pink + rose gold
   // ═══════════════════════════════════════
   let scarletTenant = await prisma.tenant.findUnique({ where: { slug: "scarletrose" } });
   if (!scarletTenant) {
@@ -81,20 +76,19 @@ async function main() {
         name: "Scarlet Rose Beauty",
         tagline: "Nail Technician Training Academy",
         logoUrl: "/srb-logo.jpg",
-        colorPrimary: "#E875A0",   // rose pink
-        colorSecondary: "#F4A0C0", // lighter pink
-        colorAccent: "#FFD6E8",    // baby pink (matches logo bg)
+        colorPrimary: "#E875A0",
+        colorSecondary: "#F4A0C0",
+        colorAccent: "#FFD6E8",
         fontHeading: "Playfair Display",
         fontBody: "Quicksand",
-        colorBgDark: "#1f0f18",  // dark mauve/wine
+        colorBgDark: "#1f0f18",
       },
     });
-    console.log("✅ Tenant 'scarletrose' created (Scarlet Rose Beauty)");
+    console.log("✅ Tenant 'scarletrose' created");
   } else {
     console.log("ℹ️  Tenant 'scarletrose' already exists");
   }
 
-  // Scarlet Rose admin
   const srAdmin = await prisma.user.findFirst({
     where: { idNumber: "admin", tenantId: scarletTenant.id },
   });
@@ -111,6 +105,32 @@ async function main() {
     console.log("✅ Scarlet Rose admin created (ID: admin / Pass: admin123)");
   } else {
     console.log("ℹ️  Scarlet Rose admin already exists");
+  }
+
+  // ═══════════════════════════════════════
+  // 4. SYSTEM TENANT (superadmin portal theme)
+  //    active=false so it doesn't show as login option
+  // ═══════════════════════════════════════
+  let sysTenant = await prisma.tenant.findUnique({ where: { slug: "_system" } });
+  if (!sysTenant) {
+    await prisma.tenant.create({
+      data: {
+        slug: "_system",
+        name: "Onyx Digital",
+        tagline: "Super Admin Portal",
+        logoUrl: "",
+        colorPrimary: "#1a1a2e",
+        colorSecondary: "#16213e",
+        colorAccent: "#e94560",
+        fontHeading: "Montserrat",
+        fontBody: "Nunito",
+        colorBgDark: "#0a0a14",
+        active: false,
+      },
+    });
+    console.log("✅ System theme created");
+  } else {
+    console.log("ℹ️  System theme already exists");
   }
 }
 

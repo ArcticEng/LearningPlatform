@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
+import ThemeProvider from "@/components/ThemeProvider";
 
 const api = {
   get: (url) => fetch(url).then(r => r.json()),
@@ -71,16 +72,30 @@ const defaultTenantForm = {
 export default function SuperAdminPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [view, setView] = useState("tenants");
   const [tenants, setTenants] = useState([]);
+  const [systemTenant, setSystemTenant] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showEdit, setShowEdit] = useState(null);
   const [form, setForm] = useState({ ...defaultTenantForm });
   const [logoUploading, setLogoUploading] = useState(false);
+  const [settingsForm, setSettingsForm] = useState(null);
   const logoRef = useRef(null);
 
   const loadData = useCallback(async () => {
     const data = await api.get("/api/superadmin/tenants");
-    setTenants(data.tenants || []);
+    const all = data.tenants || [];
+    const sys = all.find(t => t.slug === "_system");
+    if (sys) {
+      setSystemTenant(sys);
+      setSettingsForm(prev => prev || {
+        colorPrimary: sys.colorPrimary, colorSecondary: sys.colorSecondary,
+        colorAccent: sys.colorAccent, colorBgDark: sys.colorBgDark || "#0a0a14",
+        fontHeading: sys.fontHeading, fontBody: sys.fontBody,
+        name: sys.name, tagline: sys.tagline,
+      });
+    }
+    setTenants(all.filter(t => t.slug !== "_system"));
   }, []);
 
   useEffect(() => {
@@ -225,12 +240,13 @@ export default function SuperAdminPage() {
 
   return (
     <div>
+      <ThemeProvider tenant={systemTenant} />
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&display=swap');`}</style>
 
       {/* Top bar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 32px", borderBottom: "1px solid var(--border)", background: "var(--surface)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #111, #333)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 11, letterSpacing: "-0.02em" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, var(--brand-primary), var(--brand-secondary))", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 11, letterSpacing: "-0.02em" }}>
             ONYX
           </div>
           <div>
@@ -239,12 +255,14 @@ export default function SuperAdminPage() {
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <ThemeToggle />
+          <button className={`btn btn-sm ${view === "tenants" ? "btn-primary" : "btn-secondary"}`} onClick={() => setView("tenants")}>Tenants</button>
+          <button className={`btn btn-sm ${view === "settings" ? "btn-primary" : "btn-secondary"}`} onClick={() => setView("settings")}>Settings</button>
           <button className="btn btn-ghost" style={{ color: "var(--danger)" }} onClick={logout}><Icon name="out" size={16} /> Sign Out</button>
         </div>
       </div>
 
       {/* Main content */}
+      {view === "tenants" && (
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
         <div className="page-header">
           <div>
@@ -329,6 +347,66 @@ export default function SuperAdminPage() {
           </div>
         </Modal>
       </div>
+      )}
+
+      {/* Settings */}
+      {view === "settings" && systemTenant && settingsForm && (() => {
+        const sSet = (k, v) => setSettingsForm(p => ({ ...p, [k]: v }));
+        const saveSettings = async () => {
+          const res = await api.put("/api/superadmin/tenants", { id: systemTenant.id, ...settingsForm });
+          if (res.error) return alert(res.error);
+          alert("Settings saved! Reload to see changes.");
+          loadData();
+        };
+        return (
+          <div style={{ maxWidth: 700, margin: "0 auto", padding: "32px 24px" }}>
+            <h1 className="page-title">Super Admin Settings</h1>
+            <p style={{ color: "var(--text-muted)", margin: "-16px 0 24px", fontSize: 14 }}>Customize the look of your superadmin portal.</p>
+
+            <div className="card" style={{ marginBottom: 20 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                <div><label className="label">Portal Name</label><input className="input" value={settingsForm.name} onChange={e => sSet("name", e.target.value)} /></div>
+                <div><label className="label">Tagline</label><input className="input" value={settingsForm.tagline} onChange={e => sSet("tagline", e.target.value)} /></div>
+              </div>
+
+              <div style={{ padding: 16, background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)", marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Colors</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <ColorInput label="Primary" value={settingsForm.colorPrimary} onChange={v => sSet("colorPrimary", v)} />
+                  <ColorInput label="Secondary" value={settingsForm.colorSecondary} onChange={v => sSet("colorSecondary", v)} />
+                  <ColorInput label="Accent" value={settingsForm.colorAccent} onChange={v => sSet("colorAccent", v)} />
+                  <ColorInput label="Dark Background" value={settingsForm.colorBgDark} onChange={v => sSet("colorBgDark", v)} />
+                </div>
+                <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
+                  <div style={{ flex: 1, height: 32, borderRadius: 6, background: settingsForm.colorPrimary }} />
+                  <div style={{ flex: 1, height: 32, borderRadius: 6, background: settingsForm.colorSecondary }} />
+                  <div style={{ flex: 1, height: 32, borderRadius: 6, background: settingsForm.colorAccent }} />
+                  <div style={{ flex: 1, height: 32, borderRadius: 6, background: settingsForm.colorBgDark, border: "1px solid var(--border)" }} />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+                <div>
+                  <label className="label">Heading Font</label>
+                  <select className="input" value={settingsForm.fontHeading} onChange={e => sSet("fontHeading", e.target.value)}>
+                    {FONT_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Body Font</label>
+                  <select className="input" value={settingsForm.fontBody} onChange={e => sSet("fontBody", e.target.value)}>
+                    {FONT_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={saveSettings}>
+                <Icon name="check" size={16} /> Save Settings
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
