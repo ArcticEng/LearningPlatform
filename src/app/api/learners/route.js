@@ -52,15 +52,20 @@ export async function POST(req) {
 export async function PUT(req) {
   const user = await getAdminWithTenant();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { id, password } = await req.json();
-  if (!id || !password) return NextResponse.json({ error: "ID and password required" }, { status: 400 });
+  const { id, password, name } = await req.json();
+  if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
   // Verify learner belongs to this tenant
   const learner = await prisma.user.findFirst({ where: { id, tenantId: user.tenantId } });
   if (!learner) return NextResponse.json({ error: "Learner not found" }, { status: 404 });
 
-  const hashed = await bcrypt.hash(password, 10);
-  await prisma.user.update({ where: { id }, data: { password: hashed } });
+  const updateData = {};
+  if (name) updateData.name = name;
+  if (password) updateData.password = await bcrypt.hash(password, 10);
+
+  if (Object.keys(updateData).length === 0) return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+
+  await prisma.user.update({ where: { id }, data: updateData });
 
   return NextResponse.json({ ok: true });
 }

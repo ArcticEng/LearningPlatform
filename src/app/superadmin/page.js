@@ -80,6 +80,8 @@ export default function SuperAdminPage() {
   const [form, setForm] = useState({ ...defaultTenantForm });
   const [logoUploading, setLogoUploading] = useState(false);
   const [settingsForm, setSettingsForm] = useState(null);
+  const [showAddAdmin, setShowAddAdmin] = useState(null);
+  const [adminForm, setAdminForm] = useState({ name: "", idNumber: "", password: "" });
   const logoRef = useRef(null);
 
   const loadData = useCallback(async () => {
@@ -131,6 +133,19 @@ export default function SuperAdminPage() {
   const deleteTenant = async (id) => {
     if (!confirm("Delete this tenant and ALL its data (users, courses, results)?")) return;
     await api.del("/api/superadmin/tenants", { id });
+    loadData();
+  };
+
+  const addAdminToTenant = async () => {
+    if (!showAddAdmin || !adminForm.name || !adminForm.idNumber || !adminForm.password) return alert("All fields required");
+    const res = await fetch("/api/superadmin/tenants", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tenantId: showAddAdmin.id, adminName: adminForm.name, adminIdNumber: adminForm.idNumber, adminPassword: adminForm.password }),
+    }).then(r => r.json());
+    if (res.error) return alert(res.error);
+    setShowAddAdmin(null);
+    setAdminForm({ name: "", idNumber: "", password: "" });
     loadData();
   };
 
@@ -321,6 +336,7 @@ export default function SuperAdminPage() {
                 {/* Actions */}
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
                   <button className="btn btn-sm btn-secondary" onClick={() => openEdit(t)}><Icon name="edit" size={14} /> Edit</button>
+                  <button className="btn btn-sm" style={{ background: "var(--accent-soft)", color: "var(--accent)" }} onClick={() => { setAdminForm({ name: "", idNumber: "", password: "" }); setShowAddAdmin(t); }}><Icon name="plus" size={14} /> Admin</button>
                   <button className="btn btn-sm btn-danger" onClick={() => deleteTenant(t.id)}><Icon name="trash" size={14} /></button>
                 </div>
               </div>
@@ -344,6 +360,23 @@ export default function SuperAdminPage() {
           <div style={{ marginTop: 20, display: "flex", gap: 12 }}>
             <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={updateTenant}>
               <Icon name="check" size={16} /> Save Changes
+            </button>
+          </div>
+        </Modal>
+
+        {/* Add Admin Modal */}
+        <Modal open={!!showAddAdmin} onClose={() => setShowAddAdmin(null)} title={`Add Admin to ${showAddAdmin?.name || ""}`}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {showAddAdmin?.admins?.length > 0 && (
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                Current admins: {showAddAdmin.admins.map(a => `${a.name} (${a.idNumber})`).join(", ")}
+              </div>
+            )}
+            <div><label className="label">Admin Name</label><input className="input" value={adminForm.name} onChange={e => setAdminForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. John Smith" /></div>
+            <div><label className="label">Login ID</label><input className="input" value={adminForm.idNumber} onChange={e => setAdminForm(p => ({ ...p, idNumber: e.target.value }))} placeholder="e.g. john" /></div>
+            <div><label className="label">Password</label><input className="input" value={adminForm.password} onChange={e => setAdminForm(p => ({ ...p, password: e.target.value }))} placeholder="Set a password" /></div>
+            <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={addAdminToTenant}>
+              <Icon name="plus" size={16} /> Add Admin
             </button>
           </div>
         </Modal>

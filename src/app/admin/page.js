@@ -81,6 +81,9 @@ export default function AdminPage() {
   const [showAddModule, setShowAddModule] = useState(false);
   const [showTestBuilder, setShowTestBuilder] = useState(false);
   const [showResetPass, setShowResetPass] = useState(null);
+  const [showEditLearner, setShowEditLearner] = useState(null);
+  const [showEditModule, setShowEditModule] = useState(null);
+  const [showChangeMyPass, setShowChangeMyPass] = useState(false);
 
   // Forms
   const [learnerForm, setLearnerForm] = useState({ name: "", idNumber: "", password: "" });
@@ -207,6 +210,34 @@ export default function AdminPage() {
     await api.put("/api/learners", { id: showResetPass.id, password: newPass });
     setShowResetPass(null);
     setNewPass("");
+  };
+
+  const editLearnerName = async () => {
+    if (!showEditLearner || !learnerForm.name) return;
+    await api.put("/api/learners", { id: showEditLearner.id, name: learnerForm.name });
+    setShowEditLearner(null);
+    setLearnerForm({ name: "", idNumber: "", password: "" });
+    loadData();
+  };
+
+  const editModule = async () => {
+    if (!showEditModule) return;
+    const form = new FormData();
+    form.append("id", showEditModule.id);
+    if (moduleForm.title) form.append("title", moduleForm.title);
+    if (moduleForm.pdf) form.append("pdf", moduleForm.pdf);
+    await fetch("/api/modules", { method: "PUT", body: form });
+    setShowEditModule(null);
+    setModuleForm({ title: "", pdf: null, pdfName: "" });
+    loadData();
+  };
+
+  const changeMyPassword = async () => {
+    if (!newPass) return;
+    await api.put("/api/learners", { id: user.id, password: newPass });
+    setShowChangeMyPass(false);
+    setNewPass("");
+    alert("Password changed successfully!");
   };
 
   // ── Course CRUD ──
@@ -343,6 +374,9 @@ export default function AdminPage() {
           <button className="btn btn-ghost" style={{ color: "var(--danger)", flex: 1, justifyContent: "flex-start" }} onClick={logout}>
             <Icon name="out" size={16}/> Sign Out
           </button>
+          <button className="btn btn-ghost" style={{ padding: 6 }} title="Change password" onClick={() => { setNewPass(""); setShowChangeMyPass(true); }}>
+            <Icon name="lock" size={16}/>
+          </button>
           <ThemeToggle />
         </div>
       </div>
@@ -432,6 +466,7 @@ export default function AdminPage() {
                           <td>{results.filter(r => r.userId === l.id).length}</td>
                           <td>
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <button className="btn btn-sm btn-secondary" onClick={() => { setLearnerForm({ name: l.name, idNumber: "", password: "" }); setShowEditLearner(l); }}><Icon name="edit" size={14}/> Edit</button>
                               <button className="btn btn-sm" style={{ background: "var(--accent-soft)", color: "var(--accent)" }} onClick={() => { setShowResetPass(l); setNewPass(""); }}><Icon name="lock" size={14}/> Reset</button>
                               <button className="btn btn-sm btn-danger" onClick={() => deleteLearner(l.id)}><Icon name="trash" size={14}/></button>
                             </div>
@@ -459,6 +494,16 @@ export default function AdminPage() {
                   <p style={{ color: "var(--text-muted)", margin: 0 }}>Resetting password for <strong style={{ color: "var(--text)" }}>{showResetPass.name}</strong> ({showResetPass.idNumber})</p>
                   <div><label className="label">New Password</label><input className="input" value={newPass} onChange={e => setNewPass(e.target.value)}/></div>
                   <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={resetPassword}>Update Password</button>
+                </div>
+              )}
+            </Modal>
+
+            <Modal open={!!showEditLearner} onClose={() => setShowEditLearner(null)} title="Edit Learner">
+              {showEditLearner && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <p style={{ color: "var(--text-muted)", margin: 0 }}>ID: <strong style={{ color: "var(--text)" }}>{showEditLearner.idNumber}</strong></p>
+                  <div><label className="label">Full Name</label><input className="input" value={learnerForm.name} onChange={e => setLearnerForm(p => ({ ...p, name: e.target.value }))}/></div>
+                  <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={editLearnerName}><Icon name="check" size={16}/> Save</button>
                 </div>
               )}
             </Modal>
@@ -555,6 +600,9 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
+                      <button className="btn btn-sm btn-secondary" onClick={() => { setModuleForm({ title: m.title, pdf: null, pdfName: "" }); setShowEditModule(m); }}>
+                        <Icon name="edit" size={14}/> Edit
+                      </button>
                       <button className="btn btn-sm" style={{ background: "var(--accent-soft)", color: "var(--accent)" }} onClick={() => openTestBuilder(m)}>
                         <Icon name="clip" size={14}/> {m.test ? "Edit Test" : "Add Test"}
                       </button>
@@ -583,6 +631,23 @@ export default function AdminPage() {
                   </button>
                 </div>
                 <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={addModule}><Icon name="plus" size={16}/> Add Module</button>
+              </div>
+            </Modal>
+
+            <Modal open={!!showEditModule} onClose={() => setShowEditModule(null)} title={`Edit: ${showEditModule?.title || ""}`}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div><label className="label">Module Title</label><input className="input" value={moduleForm.title} onChange={e => setModuleForm(p => ({ ...p, title: e.target.value }))}/></div>
+                <div>
+                  <label className="label">Replace PDF (optional)</label>
+                  <input type="file" accept=".pdf" style={{ display: "none" }} ref={fileRef} onChange={e => {
+                    const f = e.target.files[0];
+                    if (f) setModuleForm(p => ({ ...p, pdf: f, pdfName: f.name }));
+                  }}/>
+                  <button className="btn btn-secondary" style={{ width: "100%" }} onClick={() => fileRef.current?.click()}>
+                    <Icon name="upload" size={16}/> {moduleForm.pdfName || (showEditModule?.pdfName ? `Current: ${showEditModule.pdfName}` : "Choose PDF")}
+                  </button>
+                </div>
+                <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={editModule}><Icon name="check" size={16}/> Save Changes</button>
               </div>
             </Modal>
 
@@ -755,6 +820,14 @@ export default function AdminPage() {
           );
         })()}
       </div>
+
+      <Modal open={showChangeMyPass} onClose={() => setShowChangeMyPass(false)} title="Change Your Password">
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <p style={{ color: "var(--text-muted)", margin: 0 }}>Enter your new password below.</p>
+          <div><label className="label">New Password</label><input className="input" type="password" value={newPass} onChange={e => setNewPass(e.target.value)}/></div>
+          <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={changeMyPassword}><Icon name="check" size={16}/> Update Password</button>
+        </div>
+      </Modal>
     </div>
   );
 }

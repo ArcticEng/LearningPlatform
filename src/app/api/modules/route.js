@@ -50,6 +50,51 @@ export async function POST(req) {
   return NextResponse.json({ module }, { status: 201 });
 }
 
+// PUT /api/modules - update module title / replace PDF
+export async function PUT(req) {
+  const user = await getSession();
+  if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const formData = await req.formData();
+  const id = formData.get("id");
+  const title = formData.get("title");
+  const pdf = formData.get("pdf");
+
+  if (!id) return NextResponse.json({ error: "Module ID required" }, { status: 400 });
+
+  const mod = await prisma.module.findUnique({
+    where: { id },
+    include: { course: { select: { tenantId: true } } },
+  });
+  if (!mod) return NextResponse.json({ error: "Module not found" }, { status: 404 });
+  if (user.tenantId && mod.course.tenantId !== user.tenantId) {
+    return NextResponse.json({ error: "Module not found" }, { status: 404 });
+  }
+
+  const updateData = {};
+  if (title) updateData.title = title;
+
+  if (pdf && pdf.size > 0) {
+    // Delete old PDF
+    if (mod.pdfPath) {
+      try { await unlink(path.join(UPLOAD_DIR, path.basename(mod.pdfPath))); } catch {}
+    }
+    await mkdir(UPLOAD_DIR, { recursive: true });
+    const ext = path.extname(pdf.name) || ".pdf";
+    const filename = `${uuid()}${ext}`;
+    const filepath = path.join(UPLOAD_DIR, filename);
+    const buffer = Buffer.from(await pdf.arrayBuffer());
+    await writeFile(filepath, buffer);
+    updateData.pdfPath = `/api/files/${filename}`;
+    updateData.pdfName = pdf.name;
+  }
+
+  const updated = await prisma.module.update({ where: { id }, data: updateData });
+  return NextResponse.json({ module: updated });
+}
+
 // DELETE /api/modules
 export async function DELETE(req) {
   const user = await getSession();

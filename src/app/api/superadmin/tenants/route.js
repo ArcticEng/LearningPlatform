@@ -110,3 +110,32 @@ export async function DELETE(req) {
   await prisma.tenant.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }
+
+// PATCH /api/superadmin/tenants - add admin user to existing tenant
+export async function PATCH(req) {
+  if (!(await requireSuperAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { tenantId, adminName, adminIdNumber, adminPassword } = await req.json();
+  if (!tenantId || !adminName || !adminIdNumber || !adminPassword) {
+    return NextResponse.json({ error: "tenantId, adminName, adminIdNumber, and adminPassword required" }, { status: 400 });
+  }
+
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+  if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+
+  const existing = await prisma.user.findFirst({ where: { idNumber: adminIdNumber, tenantId } });
+  if (existing) return NextResponse.json({ error: "ID number already exists in this tenant" }, { status: 409 });
+
+  const user = await prisma.user.create({
+    data: {
+      name: adminName,
+      idNumber: adminIdNumber,
+      password: await bcrypt.hash(adminPassword, 10),
+      role: "admin",
+      tenantId,
+    },
+    select: { id: true, name: true, idNumber: true },
+  });
+
+  return NextResponse.json({ admin: user }, { status: 201 });
+}
