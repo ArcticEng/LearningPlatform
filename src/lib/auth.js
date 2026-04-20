@@ -25,8 +25,30 @@ export async function getSession() {
   if (!payload) return null;
   const user = await prisma.user.findUnique({
     where: { id: payload.id },
-    select: { id: true, name: true, idNumber: true, role: true },
+    select: { id: true, name: true, idNumber: true, role: true, tenantId: true },
   });
+  return user;
+}
+
+export async function getTenant(tenantId) {
+  if (!tenantId) return null;
+  return prisma.tenant.findUnique({ where: { id: tenantId } });
+}
+
+export async function getTenantBySlug(slug) {
+  if (!slug) return null;
+  return prisma.tenant.findUnique({ where: { slug } });
+}
+
+export async function requireSuperAdmin() {
+  const user = await getSession();
+  if (!user || user.role !== "superadmin") return null;
+  return user;
+}
+
+export async function requireAdmin() {
+  const user = await getSession();
+  if (!user || (user.role !== "admin" && user.role !== "superadmin")) return null;
   return user;
 }
 
@@ -35,7 +57,7 @@ export function setSessionCookie(token) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 7,
     path: "/",
   });
 }

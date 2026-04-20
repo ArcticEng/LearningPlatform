@@ -99,7 +99,7 @@ ${text.slice(0, 30000)}`;
 // POST /api/tests/import
 export async function POST(req) {
   const user = await getSession();
-  if (!user || user.role !== "admin") {
+  if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

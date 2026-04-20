@@ -1,7 +1,7 @@
 {
-  "name": "Aloe Care Trainify",
-  "short_name": "Aloe Care",
-  "description": "Dementia care training platform",
+  "name": "Learning Platform",
+  "short_name": "LMS",
+  "description": "Online learning and assessment platform",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -11,12 +11,6 @@
     {
       "src": "/icon.svg",
       "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/apple-icon.svg",
-      "sizes": "180x180",
       "type": "image/svg+xml",
       "purpose": "any"
     }

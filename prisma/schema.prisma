@@ -7,21 +7,49 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Tenant {
+  id          String   @id @default(uuid())
+  slug        String   @unique  // "act", "newclient" — used in login
+  name        String             // "Aloe Care Trainify"
+  tagline     String   @default("")  // "Dementia Care Training Platform"
+  logoUrl     String   @default("")  // "/uploads/tenants/act-logo.jpg"
+
+  // Branding
+  colorPrimary    String @default("#1A2E6B")
+  colorSecondary  String @default("#2A4AA8")
+  colorAccent     String @default("#C3E234")
+  fontHeading     String @default("Montserrat")
+  fontBody        String @default("Nunito")
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  courses   Course[]
+}
+
 model User {
   id        String   @id @default(uuid())
   name      String
-  idNumber  String   @unique
+  idNumber  String
   password  String
-  role      String   @default("learner") // "admin" | "learner"
+  role      String   @default("learner") // "superadmin" | "admin" | "learner"
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   results   Result[]
+
+  @@unique([idNumber, tenantId])
 }
 
 model Course {
   id          String   @id @default(uuid())
   title       String
   description String   @default("")
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   modules     Module[]
@@ -32,9 +60,9 @@ model Module {
   id        String   @id @default(uuid())
   title     String
   order     Int      @default(0)
-  pdfPath   String?  // relative path to uploaded PDF in /uploads
-  pdfName   String?  // original filename
-  courseId  String
+  pdfPath   String?
+  pdfName   String?
+  courseId   String
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   test      Test?
   results   Result[]
@@ -43,25 +71,25 @@ model Module {
 }
 
 model Test {
-  id       String     @id @default(uuid())
-  moduleId String     @unique
-  module   Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  id        String     @id @default(uuid())
+  moduleId  String     @unique
+  module    Module     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   questions Question[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 model Question {
-  id       String @id @default(uuid())
-  text     String
-  optionA  String
-  optionB  String
-  optionC  String
-  optionD  String
-  correct  Int    @default(0) // 0=A, 1=B, 2=C, 3=D
-  order    Int    @default(0)
-  testId   String
-  test     Test   @relation(fields: [testId], references: [id], onDelete: Cascade)
+  id      String @id @default(uuid())
+  text    String
+  optionA String
+  optionB String
+  optionC String
+  optionD String
+  correct Int    @default(0)
+  order   Int    @default(0)
+  testId  String
+  test    Test   @relation(fields: [testId], references: [id], onDelete: Cascade)
 }
 
 model Result {
@@ -69,7 +97,7 @@ model Result {
   score       Int
   total       Int
   percentage  Int
-  answers     String   // JSON string of learner answers
+  answers     String
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseId     String

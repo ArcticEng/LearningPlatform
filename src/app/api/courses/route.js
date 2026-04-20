@@ -7,7 +7,10 @@ export async function GET() {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const where = user.tenantId ? { tenantId: user.tenantId } : {};
+
   const courses = await prisma.course.findMany({
+    where,
     include: {
       modules: {
         orderBy: { order: "asc" },
@@ -26,13 +29,16 @@ export async function GET() {
 // POST /api/courses
 export async function POST(req) {
   const user = await getSession();
-  if (!user || user.role !== "admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!user.tenantId) return NextResponse.json({ error: "No tenant context" }, { status: 400 });
 
   const { title, description } = await req.json();
   if (!title) return NextResponse.json({ error: "Title required" }, { status: 400 });
 
   const course = await prisma.course.create({
-    data: { title, description: description || "" },
+    data: { title, description: description || "", tenantId: user.tenantId },
   });
 
   return NextResponse.json({ course }, { status: 201 });
@@ -41,9 +47,14 @@ export async function POST(req) {
 // DELETE /api/courses
 export async function DELETE(req) {
   const user = await getSession();
-  if (!user || user.role !== "admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { id } = await req.json();
+  const course = await prisma.course.findFirst({ where: { id, tenantId: user.tenantId } });
+  if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 });
+
   await prisma.course.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

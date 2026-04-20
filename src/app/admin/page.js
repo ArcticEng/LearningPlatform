@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
+import ThemeProvider from "@/components/ThemeProvider";
 import Logo from "@/components/Logo";
 
 const api = {
@@ -69,6 +70,7 @@ export default function AdminPage() {
   const [results, setResults] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [tenant, setTenant] = useState(null);
 
   // Modals
   const [showAddLearner, setShowAddLearner] = useState(false);
@@ -117,8 +119,9 @@ export default function AdminPage() {
 
   useEffect(() => {
     api.get("/api/auth").then(d => {
-      if (!d.user || d.user.role !== "admin") { router.push("/"); return; }
+      if (!d.user || (d.user.role !== "admin" && d.user.role !== "superadmin")) { router.push("/"); return; }
       setUser(d.user);
+      if (d.tenant) setTenant(d.tenant);
       loadData();
     });
   }, [router, loadData]);
@@ -301,9 +304,9 @@ export default function AdminPage() {
 
   const Brand = (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <Logo size={40}/>
+      <Logo size={40} src={tenant?.logoUrl}/>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'Montserrat', sans-serif", lineHeight: 1.15 }}>Aloe Care Trainify</div>
+        <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'Montserrat', sans-serif", lineHeight: 1.15 }}>{tenant?.name || "Learning Platform"}</div>
         <div style={{ fontSize: 10, color: "var(--brand-accent)", fontWeight: 700, letterSpacing: "0.1em", marginTop: 2 }}>ADMIN PORTAL</div>
       </div>
     </div>
@@ -311,6 +314,7 @@ export default function AdminPage() {
 
   return (
     <div>
+      <ThemeProvider tenant={tenant} />
       {/* Sidebar overlay (mobile) */}
       <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)}/>
 

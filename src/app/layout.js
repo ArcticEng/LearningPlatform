@@ -12,13 +12,13 @@ const themeScript = `
 `;
 
 export const metadata = {
-  title: "Aloe Care Trainify — Dementia Care Training",
-  description: "Empowering carers with the skills and knowledge to deliver quality dementia care.",
+  title: "Learning Platform",
+  description: "Online learning and assessment platform",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Aloe Care Trainify",
+    title: "Learning Platform",
   },
   formatDetection: { telephone: false },
 };
@@ -35,7 +35,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

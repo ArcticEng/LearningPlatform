@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth";
 // POST /api/tests - create or replace test for a module
 export async function POST(req) {
   const user = await getSession();
-  if (!user || user.role !== "admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user || (user.role !== "admin" && user.role !== "superadmin")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { moduleId, questions } = await req.json();
   if (!moduleId || !questions?.length) {

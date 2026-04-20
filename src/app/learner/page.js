@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
+import ThemeProvider from "@/components/ThemeProvider";
 import Logo from "@/components/Logo";
 
 const api = {
@@ -39,6 +40,7 @@ export default function LearnerPage() {
   const [courses, setCourses] = useState([]);
   const [results, setResults] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [tenant, setTenant] = useState(null);
 
   const [activeCourse, setActiveCourse] = useState(null);
   const [activeModule, setActiveModule] = useState(null);
@@ -62,6 +64,7 @@ export default function LearnerPage() {
     api.get("/api/auth").then(d => {
       if (!d.user || d.user.role !== "learner") { router.push("/"); return; }
       setUser(d.user);
+      if (d.tenant) setTenant(d.tenant);
       loadData();
     });
   }, [router, loadData]);
@@ -285,9 +288,9 @@ export default function LearnerPage() {
 
   const Brand = (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <Logo size={40}/>
+      <Logo size={40} src={tenant?.logoUrl}/>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'Montserrat', sans-serif", lineHeight: 1.15 }}>Aloe Care Trainify</div>
+        <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'Montserrat', sans-serif", lineHeight: 1.15 }}>{tenant?.name || "Learning Platform"}</div>
         <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, marginTop: 2 }}>{user.name}</div>
       </div>
     </div>
@@ -295,6 +298,7 @@ export default function LearnerPage() {
 
   return (
     <div>
+      <ThemeProvider tenant={tenant} />
       <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)}/>
 
       <div className="sidebar">

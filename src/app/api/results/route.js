@@ -2,12 +2,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 
-// GET /api/results - get results (admin gets all, learner gets own)
+// GET /api/results
 export async function GET() {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const where = user.role === "admin" ? {} : { userId: user.id };
+  let where = {};
+  if (user.role === "learner") {
+    where = { userId: user.id };
+  } else if (user.tenantId) {
+    where = { course: { tenantId: user.tenantId } };
+  }
 
   const results = await prisma.result.findMany({
     where,
@@ -34,7 +39,10 @@ export async function POST(req) {
     return NextResponse.json({ error: "moduleId, courseId, and answers required" }, { status: 400 });
   }
 
-  // Get the test and questions
+  // Verify course belongs to user's tenant
+  const course = await prisma.course.findFirst({ where: { id: courseId, tenantId: user.tenantId } });
+  if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 });
+
   const test = await prisma.test.findUnique({
     where: { moduleId },
     include: { questions: { orderBy: { order: "asc" } } },
@@ -42,7 +50,6 @@ export async function POST(req) {
 
   if (!test) return NextResponse.json({ error: "No test found" }, { status: 404 });
 
-  // Grade
   let score = 0;
   test.questions.forEach((q, i) => {
     if (answers[i] === q.correct) score++;
@@ -53,13 +60,9 @@ export async function POST(req) {
 
   const result = await prisma.result.create({
     data: {
-      score,
-      total,
-      percentage,
+      score, total, percentage,
       answers: JSON.stringify(answers),
-      userId: user.id,
-      courseId,
-      moduleId,
+      userId: user.id, courseId, moduleId,
     },
     include: {
       user: { select: { name: true, idNumber: true } },

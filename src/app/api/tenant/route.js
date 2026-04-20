@@ -1,0 +1,23 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+
+// GET /api/tenant?slug=act — public, returns branding only
+export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  const slug = searchParams.get("slug");
+  if (!slug) return NextResponse.json({ error: "Slug required" }, { status: 400 });
+
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug: slug.toLowerCase().trim() },
+    select: {
+      id: true, slug: true, name: true, tagline: true, logoUrl: true,
+      colorPrimary: true, colorSecondary: true, colorAccent: true,
+      fontHeading: true, fontBody: true, active: true,
+    },
+  });
+
+  if (!tenant) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!tenant.active) return NextResponse.json({ error: "Disabled" }, { status: 403 });
+
+  return NextResponse.json({ tenant });
+}

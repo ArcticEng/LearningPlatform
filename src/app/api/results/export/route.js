@@ -15,7 +15,7 @@ function csvCell(val) {
 // GET /api/results/export?courseId=&moduleId=&userId=&detailed=1
 export async function GET(req) {
   const user = await getSession();
-  if (!user || user.role !== "admin") {
+  if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -26,6 +26,7 @@ export async function GET(req) {
   const detailed = searchParams.get("detailed") === "1";
 
   const where = {};
+  if (user.tenantId) where.course = { tenantId: user.tenantId };
   if (courseId) where.courseId = courseId;
   if (moduleId) where.moduleId = moduleId;
   if (userId) where.userId = userId;
