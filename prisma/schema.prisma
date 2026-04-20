@@ -20,6 +20,7 @@ model Tenant {
   colorAccent     String @default("#C3E234")
   fontHeading     String @default("Montserrat")
   fontBody        String @default("Nunito")
+  colorBgDark     String @default("")  // dark mode background override
 
   active    Boolean  @default(true)
   createdAt DateTime @default(now())

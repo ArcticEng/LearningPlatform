@@ -41,6 +41,7 @@ async function main() {
         colorAccent: "#C3E234",    // lime green
         fontHeading: "Montserrat",
         fontBody: "Nunito",
+        colorBgDark: "#0d1538",  // dark navy
       },
     });
     console.log("✅ Tenant 'act' created (Aloe Care Trainify)");
@@ -85,6 +86,7 @@ async function main() {
         colorAccent: "#FFD6E8",    // baby pink (matches logo bg)
         fontHeading: "Playfair Display",
         fontBody: "Quicksand",
+        colorBgDark: "#1f0f18",  // dark mauve/wine
       },
     });
     console.log("✅ Tenant 'scarletrose' created (Scarlet Rose Beauty)");

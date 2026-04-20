@@ -11,7 +11,7 @@ export async function GET(req) {
     where: { slug: slug.toLowerCase().trim() },
     select: {
       id: true, slug: true, name: true, tagline: true, logoUrl: true,
-      colorPrimary: true, colorSecondary: true, colorAccent: true,
+      colorPrimary: true, colorSecondary: true, colorAccent: true, colorBgDark: true,
       fontHeading: true, fontBody: true, active: true,
     },
   });

@@ -36,19 +36,22 @@ function hexToRGBA(hex, alpha) {
 
 function applyTheme(tenant, theme) {
   const root = document.documentElement;
-  const { colorPrimary, colorSecondary, colorAccent } = tenant;
+  const { colorPrimary, colorSecondary, colorAccent, colorBgDark } = tenant;
 
   root.style.setProperty("--brand-primary", colorPrimary);
   root.style.setProperty("--brand-secondary", colorSecondary);
   root.style.setProperty("--brand-accent", colorAccent);
 
-  const [h, s] = hexToHSL(colorPrimary);
-
   if (theme === "dark") {
-    root.style.setProperty("--bg", hslToHex(h, Math.min(s, 50), 6));
-    root.style.setProperty("--surface", hslToHex(h, Math.min(s, 45), 10));
-    root.style.setProperty("--surface-alt", hslToHex(h, Math.min(s, 40), 14));
-    root.style.setProperty("--border", hslToHex(h, Math.min(s, 35), 22));
+    // Use explicit dark bg if set, otherwise derive from primary
+    const bgHex = colorBgDark || null;
+    const [h, s] = bgHex ? hexToHSL(bgHex) : hexToHSL(colorPrimary);
+    const bgL = bgHex ? hexToHSL(bgHex)[2] : 6;
+
+    root.style.setProperty("--bg", bgHex || hslToHex(h, Math.min(s, 50), 6));
+    root.style.setProperty("--surface", hslToHex(h, Math.min(s, 45), bgL + 4));
+    root.style.setProperty("--surface-alt", hslToHex(h, Math.min(s, 40), bgL + 8));
+    root.style.setProperty("--border", hslToHex(h, Math.min(s, 35), bgL + 16));
     root.style.setProperty("--text", "#eef1fa");
     root.style.setProperty("--text-muted", hslToHex(h, Math.min(s, 25), 60));
     root.style.setProperty("--accent", colorAccent);
@@ -57,6 +60,7 @@ function applyTheme(tenant, theme) {
     root.style.setProperty("--modal-bg", "rgba(0, 0, 0, 0.7)");
     root.style.setProperty("--shadow-card", "none");
   } else {
+    const [h, s] = hexToHSL(colorPrimary);
     root.style.setProperty("--bg", hslToHex(h, Math.min(s, 30), 96));
     root.style.setProperty("--surface", "#ffffff");
     root.style.setProperty("--surface-alt", hslToHex(h, Math.min(s, 25), 94));

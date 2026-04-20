@@ -63,6 +63,7 @@ const FONT_OPTIONS = ["Montserrat", "Nunito", "Inter", "Poppins", "Lato", "Robot
 const defaultTenantForm = {
   slug: "", name: "", tagline: "", logoUrl: "",
   colorPrimary: "#1A2E6B", colorSecondary: "#2A4AA8", colorAccent: "#C3E234",
+  colorBgDark: "",
   fontHeading: "Montserrat", fontBody: "Nunito",
   adminName: "", adminIdNumber: "", adminPassword: "",
 };
@@ -122,6 +123,7 @@ export default function SuperAdminPage() {
     setForm({
       name: t.name, tagline: t.tagline, logoUrl: t.logoUrl,
       colorPrimary: t.colorPrimary, colorSecondary: t.colorSecondary, colorAccent: t.colorAccent,
+      colorBgDark: t.colorBgDark || "",
       fontHeading: t.fontHeading, fontBody: t.fontBody,
     });
     setShowEdit(t);
@@ -181,11 +183,15 @@ export default function SuperAdminPage() {
           <ColorInput label="Secondary" value={form.colorSecondary} onChange={v => set("colorSecondary", v)} />
           <ColorInput label="Accent" value={form.colorAccent} onChange={v => set("colorAccent", v)} />
         </div>
+        <div style={{ marginTop: 12 }}>
+          <ColorInput label="Dark Mode Background" value={form.colorBgDark || "#111111"} onChange={v => set("colorBgDark", v)} />
+        </div>
         {/* Preview */}
         <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
           <div style={{ flex: 1, height: 36, borderRadius: 8, background: form.colorPrimary }} />
           <div style={{ flex: 1, height: 36, borderRadius: 8, background: form.colorSecondary }} />
           <div style={{ flex: 1, height: 36, borderRadius: 8, background: form.colorAccent }} />
+          {form.colorBgDark && <div style={{ flex: 1, height: 36, borderRadius: 8, background: form.colorBgDark, border: "1px solid var(--border)" }} />}
         </div>
       </div>
 

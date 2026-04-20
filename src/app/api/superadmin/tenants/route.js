@@ -44,7 +44,7 @@ export async function GET() {
 export async function POST(req) {
   if (!(await requireSuperAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { slug, name, tagline, logoUrl, colorPrimary, colorSecondary, colorAccent, fontHeading, fontBody, adminName, adminIdNumber, adminPassword } = await req.json();
+  const { slug, name, tagline, logoUrl, colorPrimary, colorSecondary, colorAccent, colorBgDark, fontHeading, fontBody, adminName, adminIdNumber, adminPassword } = await req.json();
 
   if (!slug || !name) return NextResponse.json({ error: "Slug and name required" }, { status: 400 });
 
@@ -62,6 +62,7 @@ export async function POST(req) {
       colorAccent: colorAccent || "#C3E234",
       fontHeading: fontHeading || "Montserrat",
       fontBody: fontBody || "Nunito",
+      colorBgDark: colorBgDark || "",
     },
   });
 
@@ -89,7 +90,7 @@ export async function PUT(req) {
   if (!id) return NextResponse.json({ error: "Tenant ID required" }, { status: 400 });
 
   // Only allow updating specific fields
-  const allowed = ["name", "tagline", "logoUrl", "colorPrimary", "colorSecondary", "colorAccent", "fontHeading", "fontBody", "active"];
+  const allowed = ["name", "tagline", "logoUrl", "colorPrimary", "colorSecondary", "colorAccent", "colorBgDark", "fontHeading", "fontBody", "active"];
   const updateData = {};
   for (const key of allowed) {
     if (data[key] !== undefined) updateData[key] = data[key];
