@@ -257,6 +257,7 @@ export default function SuperAdminPage() {
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button className={`btn btn-sm ${view === "tenants" ? "btn-primary" : "btn-secondary"}`} onClick={() => setView("tenants")}>Tenants</button>
           <button className={`btn btn-sm ${view === "settings" ? "btn-primary" : "btn-secondary"}`} onClick={() => setView("settings")}>Settings</button>
+          <ThemeToggle />
           <button className="btn btn-ghost" style={{ color: "var(--danger)" }} onClick={logout}><Icon name="out" size={16} /> Sign Out</button>
         </div>
       </div>
