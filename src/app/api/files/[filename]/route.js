@@ -15,16 +15,22 @@ const MIME_TYPES = {
   ".svg": "image/svg+xml",
 };
 
-// GET /api/files/[filename] - serve uploaded files (auth required)
+// GET /api/files/[filename] - serve uploaded files
 export async function GET(req, { params }) {
-  const user = await getSession();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const { filename } = params;
 
   // Sanitize - prevent path traversal
   if (!filename || filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
     return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
+  }
+
+  // Logo files are public (shown on login pages before auth)
+  const isLogo = filename.startsWith("logo-");
+
+  // All other files require authentication
+  if (!isLogo) {
+    const user = await getSession();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -38,7 +44,7 @@ export async function GET(req, { params }) {
       headers: {
         "Content-Type": contentType,
         "Content-Disposition": "inline",
-        "Cache-Control": "private, max-age=3600",
+        "Cache-Control": isLogo ? "public, max-age=86400" : "private, max-age=3600",
       },
     });
   } catch {

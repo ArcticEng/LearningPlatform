@@ -22,7 +22,6 @@
   --brand-primary: #333333;
   --brand-secondary: #444444;
   --brand-accent: #666666;
-  --brand-accent-dark: #a8c61d;
 
   --accent: #666666;
   --accent-hover: #888888;
@@ -158,7 +157,7 @@ button:hover { opacity: 0.9; }
 select.input {
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%239aa4c7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23888888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 36px;
@@ -191,7 +190,6 @@ select.input:disabled { opacity: 0.5; cursor: not-allowed; }
 .badge-success { background: var(--success-soft); color: var(--success); }
 .badge-danger { background: var(--danger-soft); color: var(--danger); }
 .badge-warn { background: var(--warn-soft); color: var(--warn); }
-.badge-lime { background: rgba(195, 226, 52, 0.15); color: var(--brand-accent); }
 
 /* ─── Sidebar ─── */
 .sidebar {
