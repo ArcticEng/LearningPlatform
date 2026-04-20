@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // ─── Color utilities ───
 function hexToHSL(hex) {
@@ -34,74 +34,91 @@ function hexToRGBA(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function applyTheme(tenant, theme) {
+  const root = document.documentElement;
+  const { colorPrimary, colorSecondary, colorAccent } = tenant;
+
+  root.style.setProperty("--brand-primary", colorPrimary);
+  root.style.setProperty("--brand-secondary", colorSecondary);
+  root.style.setProperty("--brand-accent", colorAccent);
+
+  const [h, s] = hexToHSL(colorPrimary);
+
+  if (theme === "dark") {
+    root.style.setProperty("--bg", hslToHex(h, Math.min(s, 50), 6));
+    root.style.setProperty("--surface", hslToHex(h, Math.min(s, 45), 10));
+    root.style.setProperty("--surface-alt", hslToHex(h, Math.min(s, 40), 14));
+    root.style.setProperty("--border", hslToHex(h, Math.min(s, 35), 22));
+    root.style.setProperty("--text", "#eef1fa");
+    root.style.setProperty("--text-muted", hslToHex(h, Math.min(s, 25), 60));
+    root.style.setProperty("--accent", colorAccent);
+    root.style.setProperty("--accent-hover", colorAccent);
+    root.style.setProperty("--accent-soft", hexToRGBA(colorAccent, 0.14));
+    root.style.setProperty("--modal-bg", "rgba(0, 0, 0, 0.7)");
+    root.style.setProperty("--shadow-card", "none");
+  } else {
+    root.style.setProperty("--bg", hslToHex(h, Math.min(s, 30), 96));
+    root.style.setProperty("--surface", "#ffffff");
+    root.style.setProperty("--surface-alt", hslToHex(h, Math.min(s, 25), 94));
+    root.style.setProperty("--border", hslToHex(h, Math.min(s, 20), 88));
+    root.style.setProperty("--text", "#0f172a");
+    root.style.setProperty("--text-muted", hslToHex(h, Math.min(s, 20), 42));
+    root.style.setProperty("--accent", colorPrimary);
+    root.style.setProperty("--accent-hover", colorSecondary);
+    root.style.setProperty("--accent-soft", hexToRGBA(colorPrimary, 0.10));
+    root.style.setProperty("--modal-bg", "rgba(0, 0, 0, 0.5)");
+    root.style.setProperty("--shadow-card", "0 1px 3px rgba(0,0,0,0.06)");
+  }
+}
+
 export default function ThemeProvider({ tenant }) {
+  const [theme, setTheme] = useState("dark");
+
+  // Track the current theme from the DOM
+  useEffect(() => {
+    const root = document.documentElement;
+    setTheme(root.dataset.theme || "dark");
+
+    const observer = new MutationObserver(() => {
+      setTheme(root.dataset.theme || "dark");
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+
+  // Apply colors whenever tenant OR theme changes
   useEffect(() => {
     if (!tenant) return;
-    const root = document.documentElement;
-    const { colorPrimary, colorSecondary, colorAccent, fontHeading, fontBody } = tenant;
-    const theme = root.dataset.theme || "dark";
-
-    // ─── Brand colors ───
-    root.style.setProperty("--brand-primary", colorPrimary);
-    root.style.setProperty("--brand-secondary", colorSecondary);
-    root.style.setProperty("--brand-accent", colorAccent);
-
-    // ─── Derive background tints from primary color ───
-    const [h, s] = hexToHSL(colorPrimary);
-
-    if (theme === "dark") {
-      root.style.setProperty("--bg", hslToHex(h, Math.min(s, 50), 6));
-      root.style.setProperty("--surface", hslToHex(h, Math.min(s, 45), 10));
-      root.style.setProperty("--surface-alt", hslToHex(h, Math.min(s, 40), 14));
-      root.style.setProperty("--border", hslToHex(h, Math.min(s, 35), 22));
-      root.style.setProperty("--text-muted", hslToHex(h, Math.min(s, 25), 60));
-      root.style.setProperty("--accent", colorAccent);
-      root.style.setProperty("--accent-hover", colorAccent);
-      root.style.setProperty("--accent-soft", hexToRGBA(colorAccent, 0.14));
-    } else {
-      root.style.setProperty("--bg", hslToHex(h, Math.min(s, 30), 96));
-      root.style.setProperty("--surface", "#ffffff");
-      root.style.setProperty("--surface-alt", hslToHex(h, Math.min(s, 25), 94));
-      root.style.setProperty("--border", hslToHex(h, Math.min(s, 20), 88));
-      root.style.setProperty("--text-muted", hslToHex(h, Math.min(s, 20), 42));
-      root.style.setProperty("--accent", colorPrimary);
-      root.style.setProperty("--accent-hover", colorSecondary);
-      root.style.setProperty("--accent-soft", hexToRGBA(colorPrimary, 0.10));
-    }
-
-    // ─── Fonts ───
-    if (fontHeading || fontBody) {
-      const families = [fontHeading, fontBody].filter(Boolean);
-      const weights = "400;500;600;700;800;900";
-      const href = `https://fonts.googleapis.com/css2?${families.map(f => `family=${encodeURIComponent(f)}:wght@${weights}`).join("&")}&display=swap`;
-      let link = document.getElementById("tenant-fonts");
-      if (!link) {
-        link = document.createElement("link");
-        link.id = "tenant-fonts";
-        link.rel = "stylesheet";
-        document.head.appendChild(link);
-      }
-      link.href = href;
-      if (fontBody) document.body.style.fontFamily = `'${fontBody}', system-ui, sans-serif`;
-    }
+    applyTheme(tenant, theme);
 
     return () => {
-      const props = ["--bg", "--surface", "--surface-alt", "--border", "--text-muted",
+      const root = document.documentElement;
+      const props = ["--bg", "--surface", "--surface-alt", "--border", "--text", "--text-muted",
         "--brand-primary", "--brand-secondary", "--brand-accent",
-        "--accent", "--accent-hover", "--accent-soft"];
+        "--accent", "--accent-hover", "--accent-soft", "--modal-bg", "--shadow-card"];
       props.forEach(p => root.style.removeProperty(p));
     };
-  }, [tenant]);
+  }, [tenant, theme]);
 
-  // Re-apply when theme toggles
+  // Load fonts
   useEffect(() => {
     if (!tenant) return;
-    const observer = new MutationObserver(() => {
-      // Trigger re-render by dispatching custom event
-      window.dispatchEvent(new Event("themechange"));
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
+    const { fontHeading, fontBody } = tenant;
+    if (!fontHeading && !fontBody) return;
+
+    const families = [fontHeading, fontBody].filter(Boolean);
+    const weights = "400;500;600;700;800;900";
+    const href = `https://fonts.googleapis.com/css2?${families.map(f => `family=${encodeURIComponent(f)}:wght@${weights}`).join("&")}&display=swap`;
+
+    let link = document.getElementById("tenant-fonts");
+    if (!link) {
+      link = document.createElement("link");
+      link.id = "tenant-fonts";
+      link.rel = "stylesheet";
+      document.head.appendChild(link);
+    }
+    link.href = href;
+    if (fontBody) document.body.style.fontFamily = `'${fontBody}', system-ui, sans-serif`;
   }, [tenant]);
 
   return null;
