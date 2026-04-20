@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -58,7 +58,7 @@ function ColorInput({ label, value, onChange }) {
   );
 }
 
-const FONT_OPTIONS = ["Montserrat", "Nunito", "Inter", "Poppins", "Lato", "Roboto", "Open Sans", "Raleway", "DM Sans", "Source Sans 3", "Work Sans", "Manrope"];
+const FONT_OPTIONS = ["Montserrat", "Nunito", "Inter", "Poppins", "Lato", "Roboto", "Open Sans", "Raleway", "DM Sans", "Source Sans 3", "Work Sans", "Manrope", "Playfair Display", "Quicksand", "Cormorant Garamond"];
 
 const defaultTenantForm = {
   slug: "", name: "", tagline: "", logoUrl: "",
@@ -74,6 +74,8 @@ export default function SuperAdminPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [showEdit, setShowEdit] = useState(null);
   const [form, setForm] = useState({ ...defaultTenantForm });
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoRef = useRef(null);
 
   const loadData = useCallback(async () => {
     const data = await api.get("/api/superadmin/tenants");
@@ -140,7 +142,37 @@ export default function SuperAdminPage() {
         {!showCreate && <div><label className="label">Tagline</label><input className="input" value={form.tagline} onChange={e => set("tagline", e.target.value)} /></div>}
       </div>
       {showCreate && <div><label className="label">Tagline</label><input className="input" value={form.tagline} onChange={e => set("tagline", e.target.value)} /></div>}
-      <div><label className="label">Logo URL</label><input className="input" value={form.logoUrl} onChange={e => set("logoUrl", e.target.value)} placeholder="/uploads/tenants/logo.jpg" /></div>
+      <div>
+        <label className="label">Logo</label>
+        {form.logoUrl && (
+          <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
+            <img src={form.logoUrl} alt="Logo" style={{ width: 48, height: 48, objectFit: "contain", borderRadius: 8, background: "var(--surface-alt)", padding: 4 }} />
+            <span style={{ fontSize: 12, color: "var(--text-muted)", wordBreak: "break-all" }}>{form.logoUrl}</span>
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          <input className="input" value={form.logoUrl} onChange={e => set("logoUrl", e.target.value)} placeholder="URL or upload" style={{ flex: 1 }} />
+          {showEdit && (
+            <>
+              <input ref={logoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file || !showEdit) return;
+                setLogoUploading(true);
+                const fd = new FormData();
+                fd.append("logo", file);
+                fd.append("tenantId", showEdit.id);
+                const res = await fetch("/api/superadmin/upload-logo", { method: "POST", body: fd }).then(r => r.json());
+                if (res.logoUrl) set("logoUrl", res.logoUrl);
+                setLogoUploading(false);
+                e.target.value = "";
+              }} />
+              <button className="btn btn-sm btn-secondary" onClick={() => logoRef.current?.click()} disabled={logoUploading}>
+                {logoUploading ? "Uploading\u2026" : "Upload"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
 
       <div style={{ padding: 16, background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)" }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Brand Colors</div>
