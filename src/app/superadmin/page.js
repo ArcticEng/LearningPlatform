@@ -69,6 +69,7 @@ const defaultTenantForm = {
   adminName: "", adminIdNumber: "", adminPassword: "",
   featureVideos: false, featureWhatsapp: false, whatsappNumber: "",
   featureCourseAccess: false, featureContinue: false, featureCertificates: false, featureAiImport: true,
+  featureSelfRegister: false,
 };
 
 export default function SuperAdminPage() {
@@ -185,6 +186,7 @@ export default function SuperAdminPage() {
       whatsappNumber: t.whatsappNumber || "",
       featureCourseAccess: t.featureCourseAccess || false, featureContinue: t.featureContinue || false,
       featureCertificates: t.featureCertificates || false, featureAiImport: t.featureAiImport !== false,
+      featureSelfRegister: t.featureSelfRegister || false,
     });
     setShowEdit(t);
   };
@@ -401,6 +403,7 @@ export default function SuperAdminPage() {
               ["featureContinue", "Continue Where Left Off", "Students see their last accessed module"],
               ["featureCertificates", "Certificates", "Auto-generate completion certificates"],
               ["featureWhatsapp", "WhatsApp Button", "Floating contact button for students"],
+              ["featureSelfRegister", "Self-Registration", "Students register with access codes (no manual enrollment needed)"],
             ].map(([key, label, desc]) => (
               <div key={key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
                 <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, flexShrink: 0 }}>

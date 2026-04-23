@@ -30,6 +30,7 @@ model Tenant {
   featureContinue     Boolean @default(false)  // "continue where you left off"
   featureCertificates Boolean @default(false)  // auto-generate completion certificates
   featureAiImport     Boolean @default(true)   // AI test import from docs
+  featureSelfRegister Boolean @default(false)  // learner self-registration with access codes
 
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -160,4 +161,18 @@ model ErrorLog {
   tenantId  String?
   userId    String?
   createdAt DateTime @default(now())
+}
+
+model AccessCode {
+  id        String    @id @default(uuid())
+  code      String                        // e.g. "SRB-NAILS-2026"
+  tenantId  String
+  courseId  String?                        // auto-assign this course on registration
+  maxUses   Int       @default(0)          // 0 = unlimited
+  usedCount Int       @default(0)
+  active    Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([code, tenantId])
 }

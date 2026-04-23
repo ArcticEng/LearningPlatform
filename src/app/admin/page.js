@@ -84,6 +84,9 @@ export default function AdminPage() {
   const [showEditLearner, setShowEditLearner] = useState(null);
   const [showEditModule, setShowEditModule] = useState(null);
   const [showChangeMyPass, setShowChangeMyPass] = useState(false);
+  const [accessCodes, setAccessCodes] = useState([]);
+  const [showCreateCode, setShowCreateCode] = useState(false);
+  const [codeForm, setCodeForm] = useState({ code: "", courseId: "", maxUses: 0 });
 
   // Forms
   const [learnerForm, setLearnerForm] = useState({ name: "", idNumber: "", password: "" });
@@ -131,6 +134,13 @@ export default function AdminPage() {
       loadData();
     });
   }, [router, loadData]);
+
+  // Load access codes when view changes
+  useEffect(() => {
+    if (view === "access-codes" && tenant?.featureSelfRegister) {
+      api.get("/api/access-codes").then(d => setAccessCodes(d.codes || []));
+    }
+  }, [view, tenant]);
 
   const logout = async () => {
     await fetch("/api/auth", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tenantSlug: tenant?.slug }) });
@@ -344,6 +354,7 @@ export default function AdminPage() {
     { icon: "users", label: "Learners", key: "learners" },
     { icon: "book", label: "Courses", key: "courses" },
     { icon: "chart", label: "Results", key: "results" },
+    ...(tenant?.featureSelfRegister ? [{ icon: "lock", label: "Access Codes", key: "access-codes" }] : []),
   ];
 
   const Brand = (
@@ -696,6 +707,99 @@ export default function AdminPage() {
             </Modal>
           </div>
         )}
+
+        {/* ACCESS CODES */}
+        {view === "access-codes" && (() => {
+          const reloadCodes = async () => {
+            const d = await api.get("/api/access-codes");
+            setAccessCodes(d.codes || []);
+          };
+
+          const createCode = async () => {
+            if (!codeForm.code) return alert("Enter a code");
+            const res = await api.post("/api/access-codes", codeForm);
+            if (res.error) return alert(res.error);
+            setCodeForm({ code: "", courseId: "", maxUses: 0 });
+            setShowCreateCode(false);
+            reloadCodes();
+          };
+
+          const toggleCode = async (id, active) => { await api.put("/api/access-codes", { id, active }); reloadCodes(); };
+          const deleteCode = async (id) => { if (!confirm("Delete this access code?")) return; await api.del("/api/access-codes", { id }); reloadCodes(); };
+
+          return (
+            <div>
+              <div className="page-header">
+                <h1 className="page-title" style={{ margin: 0 }}>Access Codes</h1>
+                <button className="btn btn-primary" onClick={() => setShowCreateCode(true)}>
+                  <Icon name="plus" size={16}/> New Code
+                </button>
+              </div>
+
+              <p style={{ color: "var(--text-muted)", fontSize: 14, marginBottom: 20 }}>
+                Share access codes with students so they can self-register at your login page.
+              </p>
+
+              {accessCodes.length === 0 ? (
+                <div className="card" style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
+                  <p style={{ fontSize: 18, fontWeight: 600, color: "var(--text)" }}>No access codes</p>
+                  <p>Create a code to let students register themselves</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {accessCodes.map(c => (
+                    <div key={c.id} className="card" style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                      <code style={{
+                        fontFamily: "monospace", fontSize: 18, fontWeight: 800, letterSpacing: "0.08em",
+                        padding: "8px 16px", borderRadius: 8, background: "var(--surface-alt)",
+                        color: c.active ? "var(--accent)" : "var(--text-muted)",
+                        textDecoration: c.active ? "none" : "line-through",
+                      }}>{c.code}</code>
+                      <div style={{ flex: 1, minWidth: 120 }}>
+                        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{c.courseTitle}</div>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                          {c.usedCount} used{c.maxUses > 0 ? ` / ${c.maxUses} max` : " (unlimited)"}
+                          {c.expiresAt && ` · Expires ${new Date(c.expiresAt).toLocaleDateString()}`}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button className={`btn btn-sm ${c.active ? "btn-secondary" : "btn-primary"}`}
+                          onClick={() => toggleCode(c.id, !c.active)}>
+                          {c.active ? "Disable" : "Enable"}
+                        </button>
+                        <button className="btn btn-sm btn-danger" onClick={() => deleteCode(c.id)}><Icon name="trash" size={14}/></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <Modal open={showCreateCode} onClose={() => setShowCreateCode(false)} title="Create Access Code">
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div>
+                    <label className="label">Access Code</label>
+                    <input className="input" value={codeForm.code} onChange={e => setCodeForm(p => ({ ...p, code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "") }))}
+                      placeholder="e.g. SRB-NAILS-2026" style={{ fontFamily: "monospace", letterSpacing: "0.08em" }} />
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Letters, numbers, and hyphens only. Students enter this to register.</div>
+                  </div>
+                  <div>
+                    <label className="label">Auto-Assign Course (optional)</label>
+                    <select className="input" value={codeForm.courseId} onChange={e => setCodeForm(p => ({ ...p, courseId: e.target.value }))}>
+                      <option value="">All courses (no restriction)</option>
+                      {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                    </select>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>If selected, students who register with this code are automatically enrolled in this course.</div>
+                  </div>
+                  <div>
+                    <label className="label">Max Uses (0 = unlimited)</label>
+                    <input className="input" type="number" min="0" value={codeForm.maxUses} onChange={e => setCodeForm(p => ({ ...p, maxUses: parseInt(e.target.value) || 0 }))} />
+                  </div>
+                  <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={createCode}><Icon name="plus" size={16}/> Create Code</button>
+                </div>
+              </Modal>
+            </div>
+          );
+        })()}
 
         {/* RESULTS */}
         {view === "results" && (() => {

@@ -8,8 +8,11 @@ import Logo from "@/components/Logo";
 export default function TenantLoginPage() {
   const router = useRouter();
   const { slug } = useParams();
+  const [mode, setMode] = useState("login"); // "login" | "register"
   const [idNumber, setIdNumber] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [accessCode, setAccessCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [tenant, setTenant] = useState(null);
@@ -47,12 +50,49 @@ export default function TenantLoginPage() {
     }
   };
 
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (!name || !idNumber || !password || !accessCode) {
+      setError("All fields are required");
+      return;
+    }
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, idNumber, password, accessCode, tenantSlug: slug }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Registration failed");
+        setLoading(false);
+        return;
+      }
+      router.push(`/${slug}/learner`);
+    } catch {
+      setError("Connection error. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  const switchMode = (m) => {
+    setMode(m);
+    setError("");
+    setIdNumber("");
+    setPassword("");
+    setName("");
+    setAccessCode("");
+  };
+
   if (notFound) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", textAlign: "center", padding: 20 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Organization not found</h1>
-          <p style={{ color: "var(--text-muted)", marginBottom: 24 }}>No organization matches the code "{slug}"</p>
+          <p style={{ color: "var(--text-muted)", marginBottom: 24 }}>No organization matches the code &ldquo;{slug}&rdquo;</p>
           <a href="/" style={{ color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}>Go to homepage</a>
         </div>
       </div>
@@ -66,6 +106,8 @@ export default function TenantLoginPage() {
       </div>
     );
   }
+
+  const showRegister = tenant.featureSelfRegister;
 
   return (
     <>
@@ -104,29 +146,90 @@ export default function TenantLoginPage() {
             )}
           </div>
 
-          <div className="card" style={{ textAlign: "left" }}>
-            <form onSubmit={handleLogin}>
-              <div style={{ marginBottom: 18 }}>
-                <label className="label">ID Number</label>
-                <input className="input" value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="Enter your ID number" autoFocus autoComplete="username" />
-              </div>
-              <div style={{ marginBottom: 24 }}>
-                <label className="label">Password</label>
-                <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter password" autoComplete="current-password" />
-              </div>
-              {error && (
-                <div style={{ color: "var(--danger)", fontSize: 13, marginBottom: 16, padding: "10px 14px", background: "var(--danger-soft)", borderRadius: 8 }}>
-                  {error}
-                </div>
-              )}
-              <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "13px 20px" }}>
-                {loading ? "Signing in…" : "Sign In"}
+          {/* Tab switcher */}
+          {showRegister && (
+            <div style={{ display: "flex", gap: 4, marginBottom: 16, background: "var(--surface-alt)", borderRadius: 10, padding: 4 }}>
+              <button onClick={() => switchMode("login")}
+                style={{
+                  flex: 1, padding: "10px 16px", borderRadius: 8, border: "none", cursor: "pointer",
+                  fontWeight: 600, fontSize: 14, transition: "0.2s",
+                  background: mode === "login" ? "var(--surface)" : "transparent",
+                  color: mode === "login" ? "var(--text)" : "var(--text-muted)",
+                  boxShadow: mode === "login" ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
+                }}>
+                Sign In
               </button>
-            </form>
+              <button onClick={() => switchMode("register")}
+                style={{
+                  flex: 1, padding: "10px 16px", borderRadius: 8, border: "none", cursor: "pointer",
+                  fontWeight: 600, fontSize: 14, transition: "0.2s",
+                  background: mode === "register" ? "var(--surface)" : "transparent",
+                  color: mode === "register" ? "var(--text)" : "var(--text-muted)",
+                  boxShadow: mode === "register" ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
+                }}>
+                Register
+              </button>
+            </div>
+          )}
+
+          <div className="card" style={{ textAlign: "left" }}>
+            {mode === "login" ? (
+              <form onSubmit={handleLogin}>
+                <div style={{ marginBottom: 18 }}>
+                  <label className="label">ID Number</label>
+                  <input className="input" value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="Enter your ID number" autoFocus autoComplete="username" />
+                </div>
+                <div style={{ marginBottom: 24 }}>
+                  <label className="label">Password</label>
+                  <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter password" autoComplete="current-password" />
+                </div>
+                {error && (
+                  <div style={{ color: "var(--danger)", fontSize: 13, marginBottom: 16, padding: "10px 14px", background: "var(--danger-soft)", borderRadius: 8 }}>
+                    {error}
+                  </div>
+                )}
+                <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "13px 20px" }}>
+                  {loading ? "Signing in\u2026" : "Sign In"}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleRegister}>
+                <div style={{ marginBottom: 14 }}>
+                  <label className="label">Access Code</label>
+                  <input className="input" value={accessCode} onChange={e => setAccessCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. SRB-NAILS-2026" autoFocus
+                    style={{ fontFamily: "monospace", letterSpacing: "0.08em", textTransform: "uppercase" }} />
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Enter the code provided by your instructor</div>
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <label className="label">Full Name</label>
+                  <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="Your full name" autoComplete="name" />
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <label className="label">ID Number</label>
+                  <input className="input" value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="Your ID number" autoComplete="username" />
+                </div>
+                <div style={{ marginBottom: 24 }}>
+                  <label className="label">Create Password</label>
+                  <input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Choose a password" autoComplete="new-password" />
+                </div>
+                {error && (
+                  <div style={{ color: "var(--danger)", fontSize: 13, marginBottom: 16, padding: "10px 14px", background: "var(--danger-soft)", borderRadius: 8 }}>
+                    {error}
+                  </div>
+                )}
+                <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "13px 20px" }}>
+                  {loading ? "Creating account\u2026" : "Register & Start Learning"}
+                </button>
+              </form>
+            )}
           </div>
 
           <p style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 24 }}>
-            Contact your training facilitator for access.
+            {mode === "login"
+              ? (showRegister ? "Don\u2019t have an account? Click Register above." : "Contact your training facilitator for access.")
+              : "Already have an account? Click Sign In above."
+            }
           </p>
         </div>
       </div>

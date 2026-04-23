@@ -16,6 +16,7 @@ export async function GET(req) {
       featureVideos: true, featureWhatsapp: true, whatsappNumber: true,
       featureCourseAccess: true, featureContinue: true, featureCertificates: true,
       featureAiImport: true,
+      featureSelfRegister: true,
     },
   });
 
