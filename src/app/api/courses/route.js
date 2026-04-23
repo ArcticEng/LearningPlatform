@@ -1,13 +1,26 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { getSession, getTenant } from "@/lib/auth";
 
 // GET /api/courses
 export async function GET() {
   const user = await getSession();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const where = user.tenantId ? { tenantId: user.tenantId } : {};
+  let where = user.tenantId ? { tenantId: user.tenantId } : {};
+
+  // If learner + courseAccess feature enabled, filter to assigned courses only
+  if (user.role === "learner" && user.tenantId) {
+    const tenant = await getTenant(user.tenantId);
+    if (tenant?.featureCourseAccess) {
+      const access = await prisma.courseAccess.findMany({
+        where: { userId: user.id },
+        select: { courseId: true },
+      });
+      const courseIds = access.map(a => a.courseId);
+      where = { id: { in: courseIds }, tenantId: user.tenantId };
+    }
+  }
 
   const courses = await prisma.course.findMany({
     where,

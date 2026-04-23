@@ -72,6 +72,13 @@ export async function POST(req) {
       },
     });
 
+    // Mark module as completed in progress
+    await prisma.progress.upsert({
+      where: { userId_moduleId: { userId: user.id, moduleId } },
+      update: { completed: true, lastAccess: new Date() },
+      create: { userId: user.id, moduleId, completed: true },
+    }).catch(() => {});
+
     return NextResponse.json({ result }, { status: 201 });
   } catch (err) {
     await logError({ source: "api", path: "/api/results", message: err.message, details: err.stack, tenantId: user.tenantId, userId: user.id });

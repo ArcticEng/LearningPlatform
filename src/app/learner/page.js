@@ -47,6 +47,7 @@ export default function LearnerPage() {
   const [takingTest, setTakingTest] = useState(null);
   const [testAnswers, setTestAnswers] = useState({});
   const [testResult, setTestResult] = useState(null);
+  const [progress, setProgress] = useState([]);
 
   useEffect(() => {
     if (sidebarOpen) document.body.classList.add("sidebar-open");
@@ -55,9 +56,10 @@ export default function LearnerPage() {
   }, [sidebarOpen]);
 
   const loadData = useCallback(async () => {
-    const [c, r] = await Promise.all([api.get("/api/courses"), api.get("/api/results")]);
+    const [c, r, p] = await Promise.all([api.get("/api/courses"), api.get("/api/results"), api.get("/api/progress")]);
     setCourses(c.courses || []);
     setResults(r.results || []);
+    setProgress(p.progress || []);
   }, []);
 
   useEffect(() => {
@@ -188,8 +190,12 @@ export default function LearnerPage() {
     );
   }
 
-  // ── VIEW MODULE (PDF + Test button) ──
+  // ── VIEW MODULE (PDF/Video + Test button) ──
   if (activeModule) {
+    // Track progress
+    if (tenant?.featureContinue) {
+      fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ moduleId: activeModule.id }) }).catch(() => {});
+    }
     return (
       <>{theme}
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px" }}>
@@ -201,6 +207,18 @@ export default function LearnerPage() {
         </div>
         <h1 className="page-title" style={{ marginBottom: 8 }}>{activeModule.title}</h1>
 
+        {/* Video embed */}
+        {activeModule.videoUrl && (
+          <>
+            <p style={{ color: "var(--text-muted)", margin: "0 0 12px", fontSize: 14 }}>Watch the video below to learn the material.</p>
+            <div style={{ width: "100%", aspectRatio: "16/9", borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", marginBottom: 16 }}>
+              <iframe src={activeModule.videoUrl} title={activeModule.title} style={{ width: "100%", height: "100%", border: "none" }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+            </div>
+          </>
+        )}
+
+        {/* PDF viewer */}
         {activeModule.pdfPath ? (
           <>
             <p style={{ color: "var(--text-muted)", margin: "0 0 16px", fontSize: 14 }}>Study the material below, then take the test when ready.</p>
@@ -213,11 +231,11 @@ export default function LearnerPage() {
               </a>
             </div>
           </>
-        ) : (
+        ) : !activeModule.videoUrl ? (
           <div className="card" style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
-            No PDF content uploaded for this module yet.
+            No content uploaded for this module yet.
           </div>
-        )}
+        ) : null}
 
         {activeModule.test && (
           <div style={{ marginTop: 24, textAlign: "center" }}>
@@ -275,6 +293,7 @@ export default function LearnerPage() {
                       <div style={{ fontWeight: 700, fontSize: 16, wordBreak: "break-word" }}>{m.title}</div>
                       <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
                         {m.pdfPath && <span className="badge badge-accent" style={{ fontSize: 10 }}>PDF</span>}
+                        {m.videoUrl && <span className="badge" style={{ fontSize: 10, background: "rgba(139,92,246,0.12)", color: "#8b5cf6" }}>VIDEO</span>}
                         {m.test && <span className="badge" style={{ fontSize: 10, background: "rgba(124,58,237,0.12)", color: "#7c3aed" }}>{m.test.questions.length}Q TEST</span>}
                         {bestScore !== null && <span className={`badge ${passed ? "badge-success" : "badge-warn"}`}>Best: {bestScore}%</span>}
                       </div>
@@ -286,6 +305,23 @@ export default function LearnerPage() {
             })}
           </div>
         )}
+
+        {/* Certificate button */}
+        {tenant?.featureCertificates && activeCourse.modules.length > 0 && (() => {
+          const modsWithTests = activeCourse.modules.filter(m => m.test);
+          const allPassed = modsWithTests.length > 0 && modsWithTests.every(m =>
+            results.some(r => r.moduleId === m.id && r.percentage >= 50)
+          );
+          if (!allPassed) return null;
+          return (
+            <div style={{ marginTop: 24, textAlign: "center" }}>
+              <button className="btn btn-primary" style={{ padding: "14px 32px", fontSize: 16 }}
+                onClick={() => window.open(`/api/certificates?courseId=${activeCourse.id}&format=html`, "_blank")}>
+                <Icon name="award" size={18}/> Download Certificate
+              </button>
+            </div>
+          );
+        })()}
       </div>
       </>
     );
@@ -341,6 +377,28 @@ export default function LearnerPage() {
         {view === "my-courses" && (
           <div>
             <h1 className="page-title">Courses</h1>
+
+            {/* Continue where you left off */}
+            {tenant?.featureContinue && progress.length > 0 && (() => {
+              const lastProgress = progress[0]; // sorted by lastAccess desc
+              const mod = lastProgress?.module;
+              if (!mod) return null;
+              const course = courses.find(c => c.id === mod.courseId);
+              if (!course) return null;
+              const courseModule = course.modules.find(m => m.id === mod.id);
+              if (!courseModule) return null;
+              return (
+                <div className="card" style={{ marginBottom: 20, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", borderLeft: "4px solid var(--accent)" }}
+                  onClick={() => { setActiveCourse(course); setActiveModule(courseModule); }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700, marginBottom: 4 }}>Continue where you left off</div>
+                    <div style={{ fontWeight: 700, fontSize: 16 }}>{mod.title}</div>
+                    <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{course.title}</div>
+                  </div>
+                  <Icon name="chevron" size={18}/>
+                </div>
+              );
+            })()}
             {courses.length === 0 ? (
               <div className="card" style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
                 <p style={{ fontSize: 18, fontWeight: 600, color: "var(--text)" }}>No courses available</p>
@@ -408,6 +466,23 @@ export default function LearnerPage() {
           </div>
         )}
       </div>
+
+      {/* WhatsApp floating button */}
+      {tenant?.featureWhatsapp && tenant?.whatsappNumber && (
+        <a href={`https://wa.me/${tenant.whatsappNumber}`} target="_blank" rel="noopener noreferrer"
+          style={{
+            position: "fixed", bottom: 24, right: 24, width: 56, height: 56, borderRadius: "50%",
+            background: "#25D366", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 4px 16px rgba(37,211,102,0.4)", zIndex: 1000, textDecoration: "none",
+            transition: "transform 0.2s",
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = "scale(1.1)"}
+          onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+          </svg>
+        </a>
+      )}
     </div>
   );
 }

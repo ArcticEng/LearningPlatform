@@ -67,6 +67,8 @@ const defaultTenantForm = {
   colorBgDark: "",
   fontHeading: "Montserrat", fontBody: "Nunito",
   adminName: "", adminIdNumber: "", adminPassword: "",
+  featureVideos: false, featureWhatsapp: false, whatsappNumber: "",
+  featureCourseAccess: false, featureContinue: false, featureCertificates: false, featureAiImport: true,
 };
 
 export default function SuperAdminPage() {
@@ -179,6 +181,10 @@ export default function SuperAdminPage() {
       colorPrimary: t.colorPrimary, colorSecondary: t.colorSecondary, colorAccent: t.colorAccent,
       colorBgDark: t.colorBgDark || "",
       fontHeading: t.fontHeading, fontBody: t.fontBody,
+      featureVideos: t.featureVideos || false, featureWhatsapp: t.featureWhatsapp || false,
+      whatsappNumber: t.whatsappNumber || "",
+      featureCourseAccess: t.featureCourseAccess || false, featureContinue: t.featureContinue || false,
+      featureCertificates: t.featureCertificates || false, featureAiImport: t.featureAiImport !== false,
     });
     setShowEdit(t);
   };
@@ -384,6 +390,47 @@ export default function SuperAdminPage() {
         {/* Edit Modal */}
         <Modal open={!!showEdit} onClose={() => setShowEdit(null)} title={`Edit: ${showEdit?.name || ""}`}>
           {BrandingFields}
+
+          {/* Feature Toggles */}
+          <div style={{ padding: 16, background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)", marginTop: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14 }}>Feature Management</div>
+            {[
+              ["featureAiImport", "AI Test Import", "Generate test questions from uploaded documents"],
+              ["featureVideos", "Video Modules", "Embed YouTube/Vimeo videos in modules"],
+              ["featureCourseAccess", "Course Access Control", "Restrict courses per student (assign individually)"],
+              ["featureContinue", "Continue Where Left Off", "Students see their last accessed module"],
+              ["featureCertificates", "Certificates", "Auto-generate completion certificates"],
+              ["featureWhatsapp", "WhatsApp Button", "Floating contact button for students"],
+            ].map(([key, label, desc]) => (
+              <div key={key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+                <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, flexShrink: 0 }}>
+                  <input type="checkbox" checked={form[key] || false} onChange={e => set(key, e.target.checked)}
+                    style={{ opacity: 0, width: 0, height: 0, position: "absolute" }} />
+                  <span style={{
+                    position: "absolute", cursor: "pointer", inset: 0, borderRadius: 12,
+                    background: form[key] ? "var(--brand-primary)" : "var(--border)",
+                    transition: "0.2s",
+                  }}>
+                    <span style={{
+                      position: "absolute", width: 18, height: 18, borderRadius: "50%", background: "#fff",
+                      top: 3, left: form[key] ? 23 : 3, transition: "0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                    }}/>
+                  </span>
+                </label>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{label}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{desc}</div>
+                </div>
+              </div>
+            ))}
+            {form.featureWhatsapp && (
+              <div style={{ marginTop: 12 }}>
+                <label className="label">WhatsApp Number (with country code, no +)</label>
+                <input className="input" value={form.whatsappNumber} onChange={e => set("whatsappNumber", e.target.value.replace(/[^0-9]/g, ""))} placeholder="e.g. 27791234567" style={{ fontFamily: "monospace" }} />
+              </div>
+            )}
+          </div>
+
           <div style={{ marginTop: 20, display: "flex", gap: 12 }}>
             <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={updateTenant}>
               <Icon name="check" size={16} /> Save Changes

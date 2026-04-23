@@ -9,10 +9,10 @@ datasource db {
 
 model Tenant {
   id          String   @id @default(uuid())
-  slug        String   @unique  // "act", "newclient" — used in login
-  name        String             // "Aloe Care Trainify"
-  tagline     String   @default("")  // "Dementia Care Training Platform"
-  logoUrl     String   @default("")  // "/uploads/tenants/act-logo.jpg"
+  slug        String   @unique
+  name        String
+  tagline     String   @default("")
+  logoUrl     String   @default("")
 
   // Branding
   colorPrimary    String @default("#1A2E6B")
@@ -20,14 +20,24 @@ model Tenant {
   colorAccent     String @default("#C3E234")
   fontHeading     String @default("Montserrat")
   fontBody        String @default("Nunito")
-  colorBgDark     String @default("")  // dark mode background override
+  colorBgDark     String @default("")
+
+  // Feature flags (superadmin toggles per tenant)
+  featureVideos       Boolean @default(false)  // video embedding in modules
+  featureWhatsapp     Boolean @default(false)  // WhatsApp contact button
+  whatsappNumber      String  @default("")     // e.g. "27791234567"
+  featureCourseAccess Boolean @default(false)  // restrict courses per student
+  featureContinue     Boolean @default(false)  // "continue where you left off"
+  featureCertificates Boolean @default(false)  // auto-generate completion certificates
+  featureAiImport     Boolean @default(true)   // AI test import from docs
 
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users     User[]
-  courses   Course[]
+  users          User[]
+  courses        Course[]
+  courseAccess    CourseAccess[]
 }
 
 model User {
@@ -35,12 +45,14 @@ model User {
   name      String
   idNumber  String
   password  String
-  role      String   @default("learner") // "superadmin" | "admin" | "learner"
+  role      String   @default("learner")
   tenantId  String?
   tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   results   Result[]
+  courseAccess CourseAccess[]
+  progress    Progress[]
 
   @@unique([idNumber, tenantId])
 }
@@ -55,6 +67,21 @@ model Course {
   updatedAt   DateTime @updatedAt
   modules     Module[]
   results     Result[]
+  courseAccess CourseAccess[]
+}
+
+// Per-student course access (when featureCourseAccess is enabled)
+model CourseAccess {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId   String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
 }
 
 model Module {
@@ -63,12 +90,27 @@ model Module {
   order     Int      @default(0)
   pdfPath   String?
   pdfName   String?
+  videoUrl  String?  // YouTube/Vimeo embed URL
   courseId   String
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   test      Test?
   results   Result[]
+  progress  Progress[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Track student progress per module (for "continue where you left off")
+model Progress {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moduleId   String
+  module     Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  completed  Boolean  @default(false)
+  lastAccess DateTime @default(now())
+
+  @@unique([userId, moduleId])
 }
 
 model Test {
@@ -110,12 +152,12 @@ model Result {
 
 model ErrorLog {
   id        String   @id @default(uuid())
-  level     String   @default("error")  // "error" | "warn" | "info"
-  source    String   @default("")       // "api" | "client" | "system"
-  path      String   @default("")       // API route or page URL
+  level     String   @default("error")
+  source    String   @default("")
+  path      String   @default("")
   message   String
-  details   String   @default("")       // stack trace or extra info
-  tenantId  String?                     // which tenant context (null = system)
-  userId    String?                     // who triggered it (null = unauthenticated)
+  details   String   @default("")
+  tenantId  String?
+  userId    String?
   createdAt DateTime @default(now())
 }

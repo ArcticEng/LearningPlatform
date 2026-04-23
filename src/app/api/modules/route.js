@@ -20,6 +20,7 @@ export async function POST(req) {
     const title = formData.get("title");
     const courseId = formData.get("courseId");
     const pdf = formData.get("pdf");
+    const videoUrl = formData.get("videoUrl") || null;
 
     if (!title || !courseId) return NextResponse.json({ error: "Title and courseId required" }, { status: 400 });
 
@@ -45,7 +46,7 @@ export async function POST(req) {
     }
 
     const module = await prisma.module.create({
-      data: { title, courseId, order: count, pdfPath, pdfName },
+      data: { title, courseId, order: count, pdfPath, pdfName, videoUrl },
     });
 
     return NextResponse.json({ module }, { status: 201 });
@@ -67,6 +68,7 @@ export async function PUT(req) {
     const id = formData.get("id");
     const title = formData.get("title");
     const pdf = formData.get("pdf");
+    const videoUrl = formData.get("videoUrl");
 
     if (!id) return NextResponse.json({ error: "Module ID required" }, { status: 400 });
 
@@ -81,6 +83,7 @@ export async function PUT(req) {
 
     const updateData = {};
     if (title) updateData.title = title;
+    if (videoUrl !== undefined && videoUrl !== null) updateData.videoUrl = videoUrl || null;
 
     if (pdf && pdf.size > 0) {
       if (mod.pdfPath) {

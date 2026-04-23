@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-// GET /api/tenant?slug=act — public, returns branding only
+// GET /api/tenant?slug=act — public, returns branding + features
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const slug = searchParams.get("slug");
@@ -13,6 +13,9 @@ export async function GET(req) {
       id: true, slug: true, name: true, tagline: true, logoUrl: true,
       colorPrimary: true, colorSecondary: true, colorAccent: true, colorBgDark: true,
       fontHeading: true, fontBody: true, active: true,
+      featureVideos: true, featureWhatsapp: true, whatsappNumber: true,
+      featureCourseAccess: true, featureContinue: true, featureCertificates: true,
+      featureAiImport: true,
     },
   });
 

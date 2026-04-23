@@ -88,7 +88,7 @@ export default function AdminPage() {
   // Forms
   const [learnerForm, setLearnerForm] = useState({ name: "", idNumber: "", password: "" });
   const [courseForm, setCourseForm] = useState({ title: "", description: "" });
-  const [moduleForm, setModuleForm] = useState({ title: "", pdf: null, pdfName: "" });
+  const [moduleForm, setModuleForm] = useState({ title: "", pdf: null, pdfName: "", videoUrl: "" });
   const [testModule, setTestModule] = useState(null);
   const [testForm, setTestForm] = useState({ questions: [{ question: "", options: ["", "", "", ""], correct: 0 }] });
   const [newPass, setNewPass] = useState("");
@@ -226,9 +226,10 @@ export default function AdminPage() {
     form.append("id", showEditModule.id);
     if (moduleForm.title) form.append("title", moduleForm.title);
     if (moduleForm.pdf) form.append("pdf", moduleForm.pdf);
+    if (moduleForm.videoUrl !== undefined) form.append("videoUrl", moduleForm.videoUrl);
     await fetch("/api/modules", { method: "PUT", body: form });
     setShowEditModule(null);
-    setModuleForm({ title: "", pdf: null, pdfName: "" });
+    setModuleForm({ title: "", pdf: null, pdfName: "", videoUrl: "" });
     loadData();
   };
 
@@ -270,8 +271,9 @@ export default function AdminPage() {
     form.append("title", moduleForm.title);
     form.append("courseId", selectedCourse.id);
     if (moduleForm.pdf) form.append("pdf", moduleForm.pdf);
+    if (moduleForm.videoUrl) form.append("videoUrl", moduleForm.videoUrl);
     await api.postForm("/api/modules", form);
-    setModuleForm({ title: "", pdf: null, pdfName: "" });
+    setModuleForm({ title: "", pdf: null, pdfName: "", videoUrl: "" });
     setShowAddModule(false);
     loadData();
   };
@@ -573,7 +575,7 @@ export default function AdminPage() {
                 <h1 className="page-title" style={{ margin: 0 }}>{selectedCourse.title}</h1>
                 <p style={{ color: "var(--text-muted)", margin: "6px 0 0", fontSize: 14 }}>{selectedCourse.description}</p>
               </div>
-              <button className="btn btn-primary" onClick={() => { setModuleForm({ title: "", pdf: null, pdfName: "" }); setShowAddModule(true); }}>
+              <button className="btn btn-primary" onClick={() => { setModuleForm({ title: "", pdf: null, pdfName: "", videoUrl: "" }); setShowAddModule(true); }}>
                 <Icon name="plus" size={16}/> Add Module
               </button>
             </div>
@@ -595,21 +597,22 @@ export default function AdminPage() {
                         <div style={{ fontWeight: 700, fontSize: 16, wordBreak: "break-word" }}>{m.title}</div>
                         <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                           {m.pdfPath && <span className="badge badge-accent" style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>PDF: {m.pdfName}</span>}
+                          {m.videoUrl && <span className="badge" style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6" }}>Video</span>}
                           {m.test ? <span className="badge badge-success">{m.test.questions.length} questions</span> : <span className="badge badge-warn">No test</span>}
                         </div>
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
-                      <button className="btn btn-sm btn-secondary" onClick={() => { setModuleForm({ title: m.title, pdf: null, pdfName: "" }); setShowEditModule(m); }}>
+                      <button className="btn btn-sm btn-secondary" onClick={() => { setModuleForm({ title: m.title, pdf: null, pdfName: "", videoUrl: m.videoUrl || "" }); setShowEditModule(m); }}>
                         <Icon name="edit" size={14}/> Edit
                       </button>
                       <button className="btn btn-sm" style={{ background: "var(--accent-soft)", color: "var(--accent)" }} onClick={() => openTestBuilder(m)}>
                         <Icon name="clip" size={14}/> {m.test ? "Edit Test" : "Add Test"}
                       </button>
-                      <label className="btn btn-sm btn-secondary" style={{ cursor: importLoading ? "wait" : "pointer", opacity: importLoading ? 0.6 : 1 }}>
+                      {tenant?.featureAiImport !== false && <label className="btn btn-sm btn-secondary" style={{ cursor: importLoading ? "wait" : "pointer", opacity: importLoading ? 0.6 : 1 }}>
                         <Icon name="upload" size={14}/> {importLoading && testModule?.id === m.id ? "Importing…" : "Import from Doc"}
                         <input type="file" accept=".docx,.pdf,.txt" style={{ display: "none" }} onChange={(e) => handleImportDoc(e, m)} disabled={importLoading}/>
-                      </label>
+                      </label>}
                       <button className="btn btn-sm btn-danger" onClick={() => deleteModule(m.id)}><Icon name="trash" size={14}/></button>
                     </div>
                   </div>
@@ -630,6 +633,12 @@ export default function AdminPage() {
                     <Icon name="upload" size={16}/> {moduleForm.pdfName || "Choose PDF file"}
                   </button>
                 </div>
+                {tenant?.featureVideos && (
+                  <div>
+                    <label className="label">Video URL (YouTube/Vimeo embed link)</label>
+                    <input className="input" value={moduleForm.videoUrl} onChange={e => setModuleForm(p => ({ ...p, videoUrl: e.target.value }))} placeholder="https://www.youtube.com/embed/..." />
+                  </div>
+                )}
                 <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={addModule}><Icon name="plus" size={16}/> Add Module</button>
               </div>
             </Modal>
@@ -647,6 +656,12 @@ export default function AdminPage() {
                     <Icon name="upload" size={16}/> {moduleForm.pdfName || (showEditModule?.pdfName ? `Current: ${showEditModule.pdfName}` : "Choose PDF")}
                   </button>
                 </div>
+                {tenant?.featureVideos && (
+                  <div>
+                    <label className="label">Video URL (YouTube/Vimeo embed link)</label>
+                    <input className="input" value={moduleForm.videoUrl} onChange={e => setModuleForm(p => ({ ...p, videoUrl: e.target.value }))} placeholder="https://www.youtube.com/embed/..." />
+                  </div>
+                )}
                 <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={editModule}><Icon name="check" size={16}/> Save Changes</button>
               </div>
             </Modal>
