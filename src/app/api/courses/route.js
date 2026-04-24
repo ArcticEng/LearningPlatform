@@ -47,11 +47,11 @@ export async function POST(req) {
   }
   if (!user.tenantId) return NextResponse.json({ error: "No tenant context" }, { status: 400 });
 
-  const { title, description } = await req.json();
+  const { title, description, price } = await req.json();
   if (!title) return NextResponse.json({ error: "Title required" }, { status: 400 });
 
   const course = await prisma.course.create({
-    data: { title, description: description || "", tenantId: user.tenantId },
+    data: { title, description: description || "", price: price || 0, tenantId: user.tenantId },
   });
 
   return NextResponse.json({ course }, { status: 201 });
@@ -64,15 +64,18 @@ export async function PUT(req) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id, title, description } = await req.json();
+  const { id, title, description, price } = await req.json();
   if (!id || !title) return NextResponse.json({ error: "ID and title required" }, { status: 400 });
 
   const course = await prisma.course.findFirst({ where: { id, tenantId: user.tenantId } });
   if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 });
 
+  const updateData = { title, description: description || "" };
+  if (price !== undefined) updateData.price = price || 0;
+
   const updated = await prisma.course.update({
     where: { id },
-    data: { title, description: description || "" },
+    data: updateData,
   });
 
   return NextResponse.json({ course: updated });

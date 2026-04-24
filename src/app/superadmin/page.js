@@ -70,6 +70,7 @@ const defaultTenantForm = {
   featureVideos: false, featureWhatsapp: false, whatsappNumber: "",
   featureCourseAccess: false, featureContinue: false, featureCertificates: false, featureAiImport: true,
   featureSelfRegister: false,
+  featurePayments: false, paystackPublicKey: "", paystackSecretKey: "",
 };
 
 export default function SuperAdminPage() {
@@ -187,6 +188,9 @@ export default function SuperAdminPage() {
       featureCourseAccess: t.featureCourseAccess || false, featureContinue: t.featureContinue || false,
       featureCertificates: t.featureCertificates || false, featureAiImport: t.featureAiImport !== false,
       featureSelfRegister: t.featureSelfRegister || false,
+      featurePayments: t.featurePayments || false,
+      paystackPublicKey: t.paystackPublicKey || "",
+      paystackSecretKey: t.paystackSecretKey || "",
     });
     setShowEdit(t);
   };
@@ -404,6 +408,7 @@ export default function SuperAdminPage() {
               ["featureCertificates", "Certificates", "Auto-generate completion certificates"],
               ["featureWhatsapp", "WhatsApp Button", "Floating contact button for students"],
               ["featureSelfRegister", "Self-Registration", "Students register with access codes (no manual enrollment needed)"],
+              ["featurePayments", "Course Payments", "Students can purchase courses via Paystack (credit card, EFT, etc.)"],
             ].map(([key, label, desc]) => (
               <div key={key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
                 <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, flexShrink: 0 }}>
@@ -430,6 +435,19 @@ export default function SuperAdminPage() {
               <div style={{ marginTop: 12 }}>
                 <label className="label">WhatsApp Number (with country code, no +)</label>
                 <input className="input" value={form.whatsappNumber} onChange={e => set("whatsappNumber", e.target.value.replace(/[^0-9]/g, ""))} placeholder="e.g. 27791234567" style={{ fontFamily: "monospace" }} />
+              </div>
+            )}
+            {form.featurePayments && (
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div>
+                  <label className="label">Paystack Public Key</label>
+                  <input className="input" value={form.paystackPublicKey || ""} onChange={e => set("paystackPublicKey", e.target.value)} placeholder="pk_live_xxx or pk_test_xxx" style={{ fontFamily: "monospace", fontSize: 12 }} />
+                </div>
+                <div>
+                  <label className="label">Paystack Secret Key</label>
+                  <input className="input" value={form.paystackSecretKey || ""} onChange={e => set("paystackSecretKey", e.target.value)} placeholder="sk_live_xxx or sk_test_xxx" style={{ fontFamily: "monospace", fontSize: 12 }} />
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Get these from your Paystack dashboard → Settings → API Keys</div>
               </div>
             )}
           </div>

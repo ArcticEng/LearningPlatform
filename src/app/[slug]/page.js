@@ -231,6 +231,11 @@ export default function TenantLoginPage() {
               : "Already have an account? Click Sign In above."
             }
           </p>
+          {tenant.featurePayments && (
+            <a href={`/${slug}/courses`} style={{ display: "block", color: "var(--accent)", fontSize: 14, fontWeight: 600, marginTop: 12, textDecoration: "none" }}>
+              Browse & Purchase Courses →
+            </a>
+          )}
         </div>
       </div>
     </>

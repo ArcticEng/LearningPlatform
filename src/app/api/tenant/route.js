@@ -17,6 +17,7 @@ export async function GET(req) {
       featureCourseAccess: true, featureContinue: true, featureCertificates: true,
       featureAiImport: true,
       featureSelfRegister: true,
+      featurePayments: true,
     },
   });
 

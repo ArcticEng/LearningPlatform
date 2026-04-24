@@ -31,6 +31,9 @@ model Tenant {
   featureCertificates Boolean @default(false)  // auto-generate completion certificates
   featureAiImport     Boolean @default(true)   // AI test import from docs
   featureSelfRegister Boolean @default(false)  // learner self-registration with access codes
+  featurePayments    Boolean @default(false)  // Paystack payment for course access
+  paystackPublicKey  String  @default("")     // pk_live_xxx or pk_test_xxx
+  paystackSecretKey  String  @default("")     // sk_live_xxx or sk_test_xxx
 
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -62,6 +65,8 @@ model Course {
   id          String   @id @default(uuid())
   title       String
   description String   @default("")
+  price       Int      @default(0)          // price in cents (e.g. 50000 = R500.00), 0 = free
+  currency    String   @default("ZAR")
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
@@ -175,4 +180,22 @@ model AccessCode {
   createdAt DateTime  @default(now())
 
   @@unique([code, tenantId])
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  tenantId        String
+  userId          String?              // null until registration completes
+  courseId        String
+  email           String
+  name            String   @default("")
+  idNumber        String   @default("")
+  amount          Int                  // in cents
+  currency        String   @default("ZAR")
+  status          String   @default("pending") // pending | success | failed
+  paystackRef     String   @unique      // Paystack reference
+  paystackAccess  String   @default("") // Paystack access_code for checkout
+  accessCode      String   @default("") // our access code (if used alongside)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
