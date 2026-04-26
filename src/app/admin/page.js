@@ -89,6 +89,7 @@ export default function AdminPage() {
   const [codeForm, setCodeForm] = useState({ code: "", courseId: "", maxUses: 0 });
   const [showCourseAccess, setShowCourseAccess] = useState(null);
   const [courseAccessList, setCourseAccessList] = useState([]);
+  const [learnerCourseIds, setLearnerCourseIds] = useState(new Set());
 
   // Forms
   const [learnerForm, setLearnerForm] = useState({ name: "", idNumber: "", password: "" });
@@ -167,7 +168,14 @@ export default function AdminPage() {
     if (!learnerForm.name || !learnerForm.idNumber || !learnerForm.password) return;
     const res = await api.post("/api/learners", learnerForm);
     if (res.error) return alert(res.error);
+    // Grant course access for selected courses
+    if (tenant?.featureCourseAccess && learnerCourseIds.size > 0 && res.learner?.id) {
+      for (const courseId of learnerCourseIds) {
+        await api.post("/api/course-access", { userId: res.learner.id, courseId }).catch(() => {});
+      }
+    }
     setLearnerForm({ name: "", idNumber: "", password: "" });
+    setLearnerCourseIds(new Set());
     setShowAddLearner(false);
     loadData();
   };
@@ -227,8 +235,27 @@ export default function AdminPage() {
   const editLearnerName = async () => {
     if (!showEditLearner || !learnerForm.name) return;
     await api.put("/api/learners", { id: showEditLearner.id, name: learnerForm.name });
+    // Update course access if feature enabled
+    if (tenant?.featureCourseAccess) {
+      // Get current access
+      const currentAccess = await api.get(`/api/course-access?userId=${showEditLearner.id}`);
+      const currentIds = new Set((currentAccess.access || []).map(a => a.courseId));
+      // Grant new ones
+      for (const courseId of learnerCourseIds) {
+        if (!currentIds.has(courseId)) {
+          await api.post("/api/course-access", { userId: showEditLearner.id, courseId }).catch(() => {});
+        }
+      }
+      // Revoke removed ones
+      for (const a of (currentAccess.access || [])) {
+        if (!learnerCourseIds.has(a.courseId)) {
+          await api.del("/api/course-access", { id: a.id }).catch(() => {});
+        }
+      }
+    }
     setShowEditLearner(null);
     setLearnerForm({ name: "", idNumber: "", password: "" });
+    setLearnerCourseIds(new Set());
     loadData();
   };
 
@@ -483,7 +510,7 @@ export default function AdminPage() {
           <div>
             <div className="page-header">
               <h1 className="page-title" style={{ margin: 0 }}>Learners</h1>
-              <button className="btn btn-primary" onClick={() => setShowAddLearner(true)}><Icon name="plus" size={16}/> Add Learner</button>
+              <button className="btn btn-primary" onClick={() => { setLearnerForm({ name: "", idNumber: "", password: "" }); setLearnerCourseIds(new Set()); setShowAddLearner(true); }}><Icon name="plus" size={16}/> Add Learner</button>
             </div>
 
             {learners.length === 0 ? (
@@ -504,7 +531,17 @@ export default function AdminPage() {
                           <td>{results.filter(r => r.userId === l.id).length}</td>
                           <td>
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                              <button className="btn btn-sm btn-secondary" onClick={() => { setLearnerForm({ name: l.name, idNumber: "", password: "" }); setShowEditLearner(l); }}><Icon name="edit" size={14}/> Edit</button>
+                              <button className="btn btn-sm btn-secondary" onClick={async () => {
+                                setLearnerForm({ name: l.name, idNumber: "", password: "" });
+                                // Load current course access
+                                if (tenant?.featureCourseAccess) {
+                                  const res = await api.get(`/api/course-access?userId=${l.id}`);
+                                  setLearnerCourseIds(new Set((res.access || []).map(a => a.courseId)));
+                                } else {
+                                  setLearnerCourseIds(new Set());
+                                }
+                                setShowEditLearner(l);
+                              }}><Icon name="edit" size={14}/> Edit</button>
                               <button className="btn btn-sm" style={{ background: "var(--accent-soft)", color: "var(--accent)" }} onClick={() => { setShowResetPass(l); setNewPass(""); }}><Icon name="lock" size={14}/> Reset</button>
                               <button className="btn btn-sm btn-danger" onClick={() => deleteLearner(l.id)}><Icon name="trash" size={14}/></button>
                             </div>
@@ -522,6 +559,24 @@ export default function AdminPage() {
                 <div><label className="label">Full Name</label><input className="input" value={learnerForm.name} onChange={e => setLearnerForm(p => ({ ...p, name: e.target.value }))}/></div>
                 <div><label className="label">ID Number (Username)</label><input className="input" value={learnerForm.idNumber} onChange={e => setLearnerForm(p => ({ ...p, idNumber: e.target.value }))}/></div>
                 <div><label className="label">Password</label><input className="input" value={learnerForm.password} onChange={e => setLearnerForm(p => ({ ...p, password: e.target.value }))}/></div>
+                {tenant?.featureCourseAccess && courses.length > 0 && (
+                  <div>
+                    <label className="label">Assign Courses</label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto", padding: 12, background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)" }}>
+                      {courses.map(c => (
+                        <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: learnerCourseIds.has(c.id) ? "var(--accent-soft)" : "transparent", transition: "0.15s" }}>
+                          <input type="checkbox" checked={learnerCourseIds.has(c.id)} onChange={e => {
+                            const next = new Set(learnerCourseIds);
+                            e.target.checked ? next.add(c.id) : next.delete(c.id);
+                            setLearnerCourseIds(next);
+                          }} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                          <span style={{ fontWeight: 600, fontSize: 14 }}>{c.title}</span>
+                          {c.modules?.length > 0 && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>({c.modules.length} modules)</span>}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={addLearner}><Icon name="plus" size={16}/> Add Learner</button>
               </div>
             </Modal>
@@ -536,11 +591,29 @@ export default function AdminPage() {
               )}
             </Modal>
 
-            <Modal open={!!showEditLearner} onClose={() => setShowEditLearner(null)} title="Edit Learner">
+            <Modal open={!!showEditLearner} onClose={() => { setShowEditLearner(null); setLearnerCourseIds(new Set()); }} title="Edit Learner">
               {showEditLearner && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   <p style={{ color: "var(--text-muted)", margin: 0 }}>ID: <strong style={{ color: "var(--text)" }}>{showEditLearner.idNumber}</strong></p>
                   <div><label className="label">Full Name</label><input className="input" value={learnerForm.name} onChange={e => setLearnerForm(p => ({ ...p, name: e.target.value }))}/></div>
+                  {tenant?.featureCourseAccess && courses.length > 0 && (
+                    <div>
+                      <label className="label">Course Access</label>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto", padding: 12, background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)" }}>
+                        {courses.map(c => (
+                          <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: learnerCourseIds.has(c.id) ? "var(--accent-soft)" : "transparent", transition: "0.15s" }}>
+                            <input type="checkbox" checked={learnerCourseIds.has(c.id)} onChange={e => {
+                              const next = new Set(learnerCourseIds);
+                              e.target.checked ? next.add(c.id) : next.delete(c.id);
+                              setLearnerCourseIds(next);
+                            }} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                            <span style={{ fontWeight: 600, fontSize: 14 }}>{c.title}</span>
+                            {c.modules?.length > 0 && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>({c.modules.length} modules)</span>}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={editLearnerName}><Icon name="check" size={16}/> Save</button>
                 </div>
               )}
