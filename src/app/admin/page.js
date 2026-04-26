@@ -87,6 +87,8 @@ export default function AdminPage() {
   const [accessCodes, setAccessCodes] = useState([]);
   const [showCreateCode, setShowCreateCode] = useState(false);
   const [codeForm, setCodeForm] = useState({ code: "", courseId: "", maxUses: 0 });
+  const [showCourseAccess, setShowCourseAccess] = useState(null);
+  const [courseAccessList, setCourseAccessList] = useState([]);
 
   // Forms
   const [learnerForm, setLearnerForm] = useState({ name: "", idNumber: "", password: "" });
@@ -249,6 +251,27 @@ export default function AdminPage() {
     setShowChangeMyPass(false);
     setNewPass("");
     alert("Password changed successfully!");
+  };
+
+  const openCourseAccess = async (course) => {
+    setShowCourseAccess(course);
+    const res = await api.get(`/api/course-access?courseId=${course.id}`);
+    setCourseAccessList(res.access || []);
+  };
+
+  const grantAccess = async (learnerId) => {
+    if (!showCourseAccess) return;
+    await api.post("/api/course-access", { userId: learnerId, courseId: showCourseAccess.id });
+    const res = await api.get(`/api/course-access?courseId=${showCourseAccess.id}`);
+    setCourseAccessList(res.access || []);
+  };
+
+  const revokeAccess = async (accessId) => {
+    await api.del("/api/course-access", { id: accessId });
+    if (showCourseAccess) {
+      const res = await api.get(`/api/course-access?courseId=${showCourseAccess.id}`);
+      setCourseAccessList(res.access || []);
+    }
   };
 
   // ── Course CRUD ──
@@ -553,6 +576,7 @@ export default function AdminPage() {
                       {tenant?.featurePayments && (!c.price || c.price === 0) && <span className="badge" style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>Free</span>}
                       <div style={{ display: "flex", gap: 6 }}>
                         <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); setCourseForm({ title: c.title, description: c.description, price: c.price ? (c.price / 100).toFixed(2) : "" }); setShowEditCourse(c); }}><Icon name="edit" size={14}/></button>
+                        {tenant?.featureCourseAccess && <button className="btn btn-sm" style={{ background: "var(--accent-soft)", color: "var(--accent)" }} onClick={e => { e.stopPropagation(); openCourseAccess(c); }}><Icon name="users" size={14}/> Access</button>}
                         <button className="btn btn-sm btn-danger" onClick={e => { e.stopPropagation(); deleteCourse(c.id); }}><Icon name="trash" size={14}/></button>
                       </div>
                     </div>
@@ -961,6 +985,47 @@ export default function AdminPage() {
           <p style={{ color: "var(--text-muted)", margin: 0 }}>Enter your new password below.</p>
           <div><label className="label">New Password</label><input className="input" type="password" value={newPass} onChange={e => setNewPass(e.target.value)}/></div>
           <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={changeMyPassword}><Icon name="check" size={16}/> Update Password</button>
+        </div>
+      </Modal>
+
+      <Modal open={!!showCourseAccess} onClose={() => setShowCourseAccess(null)} title={`Manage Access: ${showCourseAccess?.title || ""}`}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <p style={{ color: "var(--text-muted)", margin: 0, fontSize: 13 }}>Assign which learners can access this course. Only assigned learners will see it.</p>
+
+          {courseAccessList.length > 0 && (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Assigned ({courseAccessList.length})</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {courseAccessList.map(a => (
+                  <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "var(--surface-alt)", borderRadius: 8, flexWrap: "wrap", gap: 8 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <span style={{ fontWeight: 600, fontSize: 14 }}>{a.user.name}</span>
+                      <span style={{ color: "var(--text-muted)", fontSize: 12, marginLeft: 8 }}>{a.user.idNumber}</span>
+                    </div>
+                    <button className="btn btn-sm btn-danger" style={{ padding: "4px 10px", flexShrink: 0 }} onClick={() => revokeAccess(a.id)}>Remove</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Add Learner</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 250, overflowY: "auto" }}>
+              {learners.filter(l => !courseAccessList.some(a => a.user.id === l.id)).map(l => (
+                <div key={l.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "var(--surface-alt)", borderRadius: 8, flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>{l.name}</span>
+                    <span style={{ color: "var(--text-muted)", fontSize: 12, marginLeft: 8 }}>{l.idNumber}</span>
+                  </div>
+                  <button className="btn btn-sm btn-primary" style={{ padding: "4px 10px", flexShrink: 0 }} onClick={() => grantAccess(l.id)}>Add</button>
+                </div>
+              ))}
+              {learners.filter(l => !courseAccessList.some(a => a.user.id === l.id)).length === 0 && (
+                <p style={{ color: "var(--text-muted)", fontSize: 13, textAlign: "center", padding: 16 }}>All learners are already assigned</p>
+              )}
+            </div>
+          </div>
         </div>
       </Modal>
     </div>

@@ -222,12 +222,12 @@ export default function LearnerPage() {
         {activeModule.pdfPath ? (
           <>
             <p style={{ color: "var(--text-muted)", margin: "0 0 16px", fontSize: 14 }}>Study the material below, then take the test when ready.</p>
-            <div style={{ width: "100%", height: "65vh", minHeight: 400, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)" }}>
+            <div style={{ width: "100%", height: "min(65vh, 600px)", minHeight: 280, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)" }}>
               <iframe src={activeModule.pdfPath} title={activeModule.pdfName} style={{ width: "100%", height: "100%", border: "none", background: "#fff" }}/>
             </div>
-            <div style={{ marginTop: 8, textAlign: "center" }}>
-              <a href={activeModule.pdfPath} target="_blank" rel="noopener" style={{ fontSize: 13, color: "var(--accent)" }}>
-                Open PDF in new tab ↗
+            <div style={{ marginTop: 12, textAlign: "center" }}>
+              <a href={activeModule.pdfPath} target="_blank" rel="noopener" className="btn btn-secondary" style={{ display: "inline-flex", fontSize: 14, gap: 6 }}>
+                Open PDF in full screen ↗
               </a>
             </div>
           </>

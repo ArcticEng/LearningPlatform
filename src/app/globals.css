@@ -442,21 +442,46 @@ td {
   .hamburger { display: inline-flex; }
 
   .card { padding: 16px; border-radius: 12px; }
-  .modal-content { padding: 20px; border-radius: 14px; }
+  .modal-content { padding: 20px; border-radius: 14px; max-height: 90vh; overflow-y: auto; width: 95vw !important; }
   .btn { padding: 10px 16px; }
   .btn-primary, .btn-secondary { font-size: 13px; }
   th, td { padding: 10px 12px; font-size: 13px; }
   .responsive-grid { grid-template-columns: 1fr; gap: 14px; }
   .page-title { font-size: 22px; }
-  .page-header { margin-bottom: 18px; }
+  .page-header { margin-bottom: 18px; flex-direction: column; align-items: flex-start !important; gap: 12px; }
   .login-wrap { padding: 24px 16px !important; }
+
+  /* Learner module view */
+  iframe { min-height: 300px; }
+
+  /* Tables scroll horizontally */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px; }
+  table { min-width: 600px; }
+
+  /* Stack filter controls */
+  .filter-row { flex-direction: column !important; gap: 10px !important; }
+  .filter-row select, .filter-row input { width: 100% !important; min-width: 0 !important; }
+
+  /* Course cards grid single column */
+  .course-grid { grid-template-columns: 1fr !important; }
+
+  /* Test options full width */
+  .test-option { padding: 14px !important; }
 }
 
 @media (max-width: 480px) {
   .sidebar { width: 85vw; }
-  .main-content { padding: 14px; }
-  .stat-grid { gap: 12px; }
+  .main-content { padding: 12px; }
+  .stat-grid { gap: 10px; grid-template-columns: 1fr !important; }
   .stat-card-value { font-size: 22px !important; }
   .stat-card { padding: 14px !important; gap: 12px !important; }
   .stat-icon { width: 40px !important; height: 40px !important; }
+  .page-title { font-size: 20px; }
+  .card { padding: 14px; }
+  .btn-sm { padding: 6px 10px; font-size: 12px; }
+  .badge { font-size: 10px; padding: 2px 6px; }
+  .modal-content { padding: 16px; margin: 8px; }
+  .input { font-size: 16px; padding: 10px 12px; } /* prevents iOS zoom */
+  select.input { font-size: 16px; }
+  textarea.input { font-size: 16px; }
 }
