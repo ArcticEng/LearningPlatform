@@ -23,6 +23,8 @@ try {
 try {
   console.log("🌱 Seeding...");
   execSync("node prisma/seed.js", { stdio: "inherit" });
+  console.log("🌱 Seeding SRB demo...");
+  execSync("node prisma/seed-srb-demo.js", { stdio: "inherit" });
 } catch (err) {
   console.error("⚠️  Seed warning:", err.message);
 }
