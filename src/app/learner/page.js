@@ -309,86 +309,89 @@ export default function LearnerPage() {
           )}
 
           {/* ─── Main Content ─── */}
-          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             {currentModule ? (
-              <div style={{ flex: 1, padding: isMobile ? "20px 16px" : "32px 40px", maxWidth: 960, width: "100%", margin: "0 auto" }}>
-
-                <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round">
-                    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/>
-                  </svg>
-                  {currentModule.title}
-                </h2>
-
-                {/* Video */}
-                {embedUrl && (
-                  <div style={{ width: "100%", aspectRatio: "16/9", borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)", marginBottom: 24 }}>
-                    <iframe src={embedUrl} title={currentModule.title} style={{ width: "100%", height: "100%", border: "none" }}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                  </div>
-                )}
-
-                {/* PDF */}
-                {currentModule.pdfPath && (
-                  <div style={{ marginBottom: 24 }}>
-                    <div style={{ width: "100%", height: isMobile ? "50vh" : "min(70vh, 700px)", minHeight: 280, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)" }}>
-                      <iframe src={currentModule.pdfPath} title={currentModule.pdfName} style={{ width: "100%", height: "100%", border: "none", background: "#fff" }}/>
-                    </div>
-                    <div style={{ marginTop: 10, textAlign: "center" }}>
-                      <a href={currentModule.pdfPath} target="_blank" rel="noopener" className="btn btn-sm btn-secondary">
-                        Open PDF in full screen ↗
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                {/* No content */}
-                {!embedUrl && !currentModule.pdfPath && (
-                  <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
-                    <p style={{ fontSize: 16 }}>No content uploaded for this module yet.</p>
-                  </div>
-                )}
-
-                {/* Test button */}
-                {currentModule.test && (
-                  <div style={{ marginTop: 8, marginBottom: 24 }}>
-                    <button className="btn btn-primary" style={{ padding: "12px 32px", fontSize: 15 }}
-                      onClick={() => { setTakingTest(currentModule); setTestAnswers({}); }}>
-                      <Icon name="clip" size={16}/> Take Test ({currentModule.test.questions.length} questions)
-                    </button>
+              <>
+                {/* Module title bar */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 20px", borderBottom: "1px solid var(--border)", flexShrink: 0, flexWrap: "wrap", gap: 8 }}>
+                  <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round">
+                      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/>
+                    </svg>
+                    {currentModule.title}
+                  </h2>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                    {currentModule.test && (
+                      <button className="btn btn-sm btn-primary" style={{ fontSize: 12, padding: "6px 14px" }}
+                        onClick={() => { setTakingTest(currentModule); setTestAnswers({}); }}>
+                        <Icon name="clip" size={13}/> Take Test ({currentModule.test.questions.length}Q)
+                      </button>
+                    )}
                     {(() => {
                       const best = results.filter(r => r.moduleId === currentModule.id);
                       if (best.length === 0) return null;
                       const top = Math.max(...best.map(r => r.percentage));
-                      return <span style={{ marginLeft: 12, fontSize: 13, color: top >= 50 ? "var(--success)" : "var(--text-muted)" }}>Best: {top}%</span>;
+                      return <span className={`badge ${top >= 50 ? "badge-success" : "badge-warn"}`} style={{ fontSize: 11 }}>Best: {top}%</span>;
                     })()}
+                    <a href={currentModule.pdfPath || "#"} target="_blank" rel="noopener" style={{ fontSize: 12, color: "var(--text-muted)", textDecoration: "none", display: currentModule.pdfPath ? "inline" : "none" }}>↗</a>
                   </div>
-                )}
+                </div>
 
-                {/* Bottom Complete and Continue */}
-                {nextMod && (
-                  <div style={{ marginTop: 20, paddingTop: 24, borderTop: "1px solid var(--border)" }}>
-                    <button className="btn btn-primary" style={{ padding: "14px 32px", fontSize: 15, borderRadius: 8 }} onClick={() => goToModule(nextMod)}>
-                      Complete and Continue ›
-                    </button>
-                  </div>
-                )}
+                {/* Full-screen content area */}
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-                {/* Certificate (show on last module when all passed) */}
-                {!nextMod && tenant?.featureCertificates && (() => {
-                  const modsWithTests = modules.filter(m => m.test);
-                  const allPassed = modsWithTests.length > 0 && modsWithTests.every(m => results.some(r => r.moduleId === m.id && r.percentage >= 50));
-                  if (!allPassed) return null;
-                  return (
-                    <div style={{ marginTop: 20, paddingTop: 24, borderTop: "1px solid var(--border)" }}>
-                      <button className="btn btn-primary" style={{ padding: "14px 32px", fontSize: 15 }}
-                        onClick={() => window.open(`/api/certificates?courseId=${activeCourse.id}&format=html`, "_blank")}>
-                        <Icon name="award" size={18}/> Download Certificate
-                      </button>
+                  {/* Video — if video exists, show it in aspect ratio */}
+                  {embedUrl && (
+                    <div style={{ width: "100%", aspectRatio: "16/9", maxHeight: currentModule.pdfPath ? "50%" : undefined, flexShrink: 0, overflow: "hidden", borderBottom: "1px solid var(--border)" }}>
+                      <iframe src={embedUrl} title={currentModule.title} style={{ width: "100%", height: "100%", border: "none" }}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                     </div>
-                  );
-                })()}
-              </div>
+                  )}
+
+                  {/* PDF — fills ALL remaining vertical space */}
+                  {currentModule.pdfPath && (
+                    <div style={{ flex: 1, overflow: "hidden" }}>
+                      <iframe src={currentModule.pdfPath} title={currentModule.pdfName}
+                        style={{ width: "100%", height: "100%", border: "none", background: "#fff", display: "block" }}/>
+                    </div>
+                  )}
+
+                  {/* No content */}
+                  {!embedUrl && !currentModule.pdfPath && (
+                    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
+                      <p style={{ fontSize: 16 }}>No content uploaded for this module yet.</p>
+                    </div>
+                  )}
+
+                  {/* Video only (no PDF) — show test + continue below video */}
+                  {embedUrl && !currentModule.pdfPath && (
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 24 }}>
+                      {currentModule.test && (
+                        <button className="btn btn-primary" style={{ padding: "14px 40px", fontSize: 16 }}
+                          onClick={() => { setTakingTest(currentModule); setTestAnswers({}); }}>
+                          <Icon name="clip" size={18}/> Take Test ({currentModule.test.questions.length} questions)
+                        </button>
+                      )}
+                      {nextMod && (
+                        <button className="btn btn-secondary" style={{ padding: "12px 32px", fontSize: 15 }} onClick={() => goToModule(nextMod)}>
+                          Complete and Continue ›
+                        </button>
+                      )}
+                      {!nextMod && tenant?.featureCertificates && (() => {
+                        const modsWithTests = modules.filter(m => m.test);
+                        const allPassed = modsWithTests.length > 0 && modsWithTests.every(m => results.some(r => r.moduleId === m.id && r.percentage >= 50));
+                        if (!allPassed) return null;
+                        return (
+                          <button className="btn btn-primary" style={{ padding: "14px 32px", fontSize: 15 }}
+                            onClick={() => window.open(`/api/certificates?courseId=${activeCourse.id}&format=html`, "_blank")}>
+                            <Icon name="award" size={18}/> Download Certificate
+                          </button>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              </>
             ) : (
               <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
                 <p>Select a module from the curriculum to begin.</p>
