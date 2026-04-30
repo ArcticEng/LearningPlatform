@@ -350,7 +350,7 @@ export default function LearnerPage() {
 
                   {/* PDF — fills ALL remaining vertical space */}
                   {currentModule.pdfPath && (
-                    <div style={{ flex: 1, overflow: "hidden" }}>
+                    <div className="pdf-viewer-wrap" style={{ flex: 1, overflow: "hidden", position: "relative" }}>
                       <iframe src={currentModule.pdfPath} title={currentModule.pdfName}
                         style={{ width: "100%", height: "100%", border: "none", background: "#fff", display: "block" }}/>
                     </div>

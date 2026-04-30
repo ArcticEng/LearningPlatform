@@ -637,21 +637,21 @@ export default function AdminPage() {
             ) : (
               <div className="responsive-grid">
                 {courses.map(c => (
-                  <div key={c.id} className="card" style={{ cursor: "pointer", transition: "border-color 0.2s" }}
+                  <div key={c.id} className="card" style={{ cursor: "pointer", transition: "border-color 0.2s", display: "flex", flexDirection: "column" }}
                     onClick={() => setSelectedCourse(c)}
                     onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent)"}
                     onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
-                    <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700 }}>{c.title}</h3>
-                    <p style={{ color: "var(--text-muted)", fontSize: 14, margin: "0 0 16px" }}>{c.description || "No description"}</p>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <h3 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700 }}>{c.title}</h3>
+                    <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "0 0 16px", flex: 1 }}>{c.description || "No description"}</p>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
                       <span className="badge badge-accent">{c.modules.length} modules</span>
                       {tenant?.featurePayments && c.price > 0 && <span className="badge badge-success">R {(c.price / 100).toFixed(2)}</span>}
                       {tenant?.featurePayments && (!c.price || c.price === 0) && <span className="badge" style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>Free</span>}
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); setCourseForm({ title: c.title, description: c.description, price: c.price ? (c.price / 100).toFixed(2) : "" }); setShowEditCourse(c); }}><Icon name="edit" size={14}/></button>
-                        {tenant?.featureCourseAccess && <button className="btn btn-sm" style={{ background: "var(--accent-soft)", color: "var(--accent)" }} onClick={e => { e.stopPropagation(); openCourseAccess(c); }}><Icon name="users" size={14}/> Access</button>}
-                        <button className="btn btn-sm btn-danger" onClick={e => { e.stopPropagation(); deleteCourse(c.id); }}><Icon name="trash" size={14}/></button>
-                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                      <button className="btn btn-sm btn-secondary" style={{ flex: 1, justifyContent: "center" }} onClick={e => { e.stopPropagation(); setCourseForm({ title: c.title, description: c.description, price: c.price ? (c.price / 100).toFixed(2) : "" }); setShowEditCourse(c); }}><Icon name="edit" size={14}/> Edit</button>
+                      {tenant?.featureCourseAccess && <button className="btn btn-sm" style={{ flex: 1, justifyContent: "center", background: "var(--accent-soft)", color: "var(--accent)" }} onClick={e => { e.stopPropagation(); openCourseAccess(c); }}><Icon name="users" size={14}/> Access</button>}
+                      <button className="btn btn-sm btn-danger" onClick={e => { e.stopPropagation(); deleteCourse(c.id); }}><Icon name="trash" size={14}/></button>
                     </div>
                   </div>
                 ))}

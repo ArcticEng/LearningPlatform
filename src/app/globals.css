@@ -428,6 +428,17 @@ td {
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ─── PDF Viewer ─── */
+.pdf-viewer-wrap iframe {
+  margin-top: -40px;
+  height: calc(100% + 40px) !important;
+  transition: margin-top 0.25s ease, height 0.25s ease;
+}
+.pdf-viewer-wrap:hover iframe {
+  margin-top: 0;
+  height: 100% !important;
+}
+
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
