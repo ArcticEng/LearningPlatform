@@ -75,7 +75,7 @@ async function main() {
         slug: "scarletrose",
         name: "Scarlet Rose Beauty",
         tagline: "Nail Technician Training Academy",
-        logoUrl: "/srb-logo.jpg",
+        logoUrl: "/api/files/logo-scarletrose.jpeg",
         colorPrimary: "#E875A0",
         colorSecondary: "#F4A0C0",
         colorAccent: "#FFD6E8",
@@ -86,6 +86,11 @@ async function main() {
     });
     console.log("✅ Tenant 'scarletrose' created");
   } else {
+    // Update logo if it changed
+    if (scarletTenant.logoUrl !== "/api/files/logo-scarletrose.jpeg") {
+      await prisma.tenant.update({ where: { slug: "scarletrose" }, data: { logoUrl: "/api/files/logo-scarletrose.jpeg" } });
+      console.log("🖼️  SRB logo updated");
+    }
     console.log("ℹ️  Tenant 'scarletrose' already exists");
   }
 

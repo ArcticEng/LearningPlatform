@@ -28,3 +28,23 @@ try {
 } catch (err) {
   console.error("⚠️  Seed warning:", err.message);
 }
+
+// Copy bundled logos to upload directory
+const fs = require("fs");
+const path = require("path");
+const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), "public", "uploads");
+try {
+  fs.mkdirSync(uploadDir, { recursive: true });
+  const assetsDir = path.join(process.cwd(), "public", "assets");
+  if (fs.existsSync(assetsDir)) {
+    for (const file of fs.readdirSync(assetsDir)) {
+      const dest = path.join(uploadDir, file);
+      if (!fs.existsSync(dest)) {
+        fs.copyFileSync(path.join(assetsDir, file), dest);
+        console.log(`🖼️  Copied ${file} to uploads`);
+      }
+    }
+  }
+} catch (err) {
+  console.error("⚠️  Logo copy warning:", err.message);
+}
