@@ -48,6 +48,7 @@ export default function LearnerPage() {
   const [testAnswers, setTestAnswers] = useState({});
   const [testResult, setTestResult] = useState(null);
   const [progress, setProgress] = useState([]);
+  const [playerSidebar, setPlayerSidebar] = useState(true);
 
   useEffect(() => {
     if (sidebarOpen) document.body.classList.add("sidebar-open");
@@ -71,15 +72,17 @@ export default function LearnerPage() {
     });
   }, [router, loadData]);
 
+  // Auto-hide sidebar on mobile
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) setPlayerSidebar(false);
+  }, [activeCourse]);
+
   const logout = async () => {
     await fetch("/api/auth", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tenantSlug: tenant?.slug }) });
     router.push(tenant?.slug ? `/${tenant.slug}` : "/");
   };
 
-  const navigate = (key) => {
-    setView(key);
-    setSidebarOpen(false);
-  };
+  const navigate = (key) => { setView(key); setSidebarOpen(false); };
 
   const submitTest = async () => {
     if (!takingTest || !activeCourse) return;
@@ -96,12 +99,24 @@ export default function LearnerPage() {
     }
   };
 
+  // Helper: convert video URL to embed
+  const toEmbedUrl = (url) => {
+    if (!url) return "";
+    let u = url;
+    const yt = u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|m\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]+)/);
+    if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+    const vim = u.match(/vimeo\.com\/([0-9]+)/);
+    if (vim && !u.includes("player.vimeo.com")) return `https://player.vimeo.com/video/${vim[1]}`;
+    return u;
+  };
+
   if (!user) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "var(--text-muted)" }}>Loading…</div>;
 
-  // ThemeProvider wrapper for ALL views
   const theme = <ThemeProvider tenant={tenant} />;
 
-  // ── TAKING TEST ──
+  // ══════════════════════════════════════
+  // TAKING TEST
+  // ══════════════════════════════════════
   if (takingTest) {
     const test = takingTest.test;
     const allAnswered = test.questions.every((_, i) => testAnswers[i] !== undefined);
@@ -125,12 +140,7 @@ export default function LearnerPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {[q.optionA, q.optionB, q.optionC, q.optionD].map((opt, oi) => (
                 <button key={oi} className={`test-option ${testAnswers[qi] === oi ? "selected" : ""}`} onClick={() => setTestAnswers(p => ({ ...p, [qi]: oi }))}>
-                  <span style={{
-                    width: 28, height: 28, borderRadius: "50%",
-                    border: `2px solid ${testAnswers[qi] === oi ? "var(--accent)" : "var(--border)"}`,
-                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                    fontSize: 13, fontWeight: 700,
-                  }}>
+                  <span style={{ width: 28, height: 28, borderRadius: "50%", border: `2px solid ${testAnswers[qi] === oi ? "var(--accent)" : "var(--border)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 700 }}>
                     {String.fromCharCode(65 + oi)}
                   </span>
                   <span style={{ flex: 1 }}>{opt}</span>
@@ -149,21 +159,16 @@ export default function LearnerPage() {
     );
   }
 
-  // ── TEST RESULT ──
+  // ══════════════════════════════════════
+  // TEST RESULT
+  // ══════════════════════════════════════
   if (testResult) {
     const passed = testResult.percentage >= 70;
     return (
       <>{theme}
       <div style={{ maxWidth: 520, margin: "0 auto", padding: "60px 20px", textAlign: "center", position: "relative" }}>
-        <div style={{ position: "absolute", top: 20, right: 20 }}>
-          <ThemeToggle />
-        </div>
-        <div style={{
-          width: 96, height: 96, borderRadius: "50%", margin: "0 auto 24px",
-          background: passed ? "var(--success-soft)" : "var(--danger-soft)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: passed ? "var(--success)" : "var(--danger)",
-        }}>
+        <div style={{ position: "absolute", top: 20, right: 20 }}><ThemeToggle /></div>
+        <div style={{ width: 96, height: 96, borderRadius: "50%", margin: "0 auto 24px", background: passed ? "var(--success-soft)" : "var(--danger-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: passed ? "var(--success)" : "var(--danger)" }}>
           <Icon name={passed ? "award" : "x"} size={44}/>
         </div>
         <h1 style={{ fontSize: 28, fontWeight: 800, margin: "0 0 8px", color: passed ? "var(--success)" : "var(--danger)" }}>
@@ -181,7 +186,7 @@ export default function LearnerPage() {
           </div>
         </div>
         <div style={{ marginTop: 32 }}>
-          <button className="btn btn-primary" style={{ padding: "12px 32px" }} onClick={() => { setTestResult(null); setActiveModule(null); }}>
+          <button className="btn btn-primary" style={{ padding: "12px 32px" }} onClick={() => { setTestResult(null); }}>
             <Icon name="back" size={16}/> Back to Course
           </button>
         </div>
@@ -190,152 +195,215 @@ export default function LearnerPage() {
     );
   }
 
-  // ── VIEW MODULE (PDF/Video + Test button) ──
-  if (activeModule) {
-    // Track progress
-    if (tenant?.featureContinue) {
-      fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ moduleId: activeModule.id }) }).catch(() => {});
-    }
-    return (
-      <>{theme}
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <button className="btn btn-ghost" style={{ color: "var(--accent)" }} onClick={() => setActiveModule(null)}>
-            <Icon name="back" size={16}/> Back to Modules
-          </button>
-          <ThemeToggle />
-        </div>
-        <h1 className="page-title" style={{ marginBottom: 8 }}>{activeModule.title}</h1>
-
-        {/* Video embed */}
-        {activeModule.videoUrl && (() => {
-          // Auto-convert YouTube URLs to embed format
-          let embedUrl = activeModule.videoUrl;
-          const ytMatch = embedUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|m\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]+)/);
-          if (ytMatch) embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}`;
-          const vimeoMatch = embedUrl.match(/vimeo\.com\/([0-9]+)/);
-          if (vimeoMatch && !embedUrl.includes("player.vimeo.com")) embedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-          return (
-          <>
-            <p style={{ color: "var(--text-muted)", margin: "0 0 12px", fontSize: 14 }}>Watch the video below to learn the material.</p>
-            <div style={{ width: "100%", aspectRatio: "16/9", borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", marginBottom: 16 }}>
-              <iframe src={embedUrl} title={activeModule.title} style={{ width: "100%", height: "100%", border: "none" }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-            </div>
-          </>
-          );
-        })()}
-
-        {/* PDF viewer */}
-        {activeModule.pdfPath ? (
-          <>
-            <p style={{ color: "var(--text-muted)", margin: "0 0 16px", fontSize: 14 }}>Study the material below, then take the test when ready.</p>
-            <div style={{ width: "100%", height: "min(65vh, 600px)", minHeight: 280, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)" }}>
-              <iframe src={activeModule.pdfPath} title={activeModule.pdfName} style={{ width: "100%", height: "100%", border: "none", background: "#fff" }}/>
-            </div>
-            <div style={{ marginTop: 12, textAlign: "center" }}>
-              <a href={activeModule.pdfPath} target="_blank" rel="noopener" className="btn btn-secondary" style={{ display: "inline-flex", fontSize: 14, gap: 6 }}>
-                Open PDF in full screen ↗
-              </a>
-            </div>
-          </>
-        ) : !activeModule.videoUrl ? (
-          <div className="card" style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
-            No content uploaded for this module yet.
-          </div>
-        ) : null}
-
-        {activeModule.test && (
-          <div style={{ marginTop: 24, textAlign: "center" }}>
-            <button className="btn btn-primary" style={{ padding: "14px 40px", fontSize: 16 }}
-              onClick={() => { setTakingTest(activeModule); setTestAnswers({}); }}>
-              <Icon name="clip" size={18}/> Take Test ({activeModule.test.questions.length} questions)
-            </button>
-          </div>
-        )}
-      </div>
-      </>
-    );
-  }
-
-  // ── COURSE MODULES LIST ──
+  // ══════════════════════════════════════
+  // COURSE PLAYER (Teachable-style)
+  // ══════════════════════════════════════
   if (activeCourse) {
+    const modules = activeCourse.modules || [];
+    const currentModule = activeModule || modules[0] || null;
+    const currentIdx = currentModule ? modules.findIndex(m => m.id === currentModule.id) : -1;
+    const nextMod = currentIdx >= 0 && currentIdx < modules.length - 1 ? modules[currentIdx + 1] : null;
+    const completedCount = modules.filter(m => results.some(r => r.moduleId === m.id && r.percentage >= 50)).length;
+    const progressPct = modules.length > 0 ? Math.round((completedCount / modules.length) * 100) : 0;
+    const embedUrl = currentModule ? toEmbedUrl(currentModule.videoUrl) : "";
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
+    // Track progress
+    useEffect(() => {
+      if (currentModule && tenant?.featureContinue) {
+        fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ moduleId: currentModule.id }) }).catch(() => {});
+      }
+    }, [currentModule?.id]);
+
+    const goToModule = (m) => {
+      setActiveModule(m);
+      if (isMobile) setPlayerSidebar(false);
+    };
+
     return (
       <>{theme}
-      <div style={{ maxWidth: 800, margin: "0 auto", padding: "24px 16px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <button className="btn btn-ghost" style={{ color: "var(--accent)" }} onClick={() => setActiveCourse(null)}>
-            <Icon name="back" size={16}/> All Courses
+      <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", flexDirection: "column", background: "var(--bg)" }}>
+
+        {/* ─── Top Bar ─── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 16px", height: 52, borderBottom: "1px solid var(--border)", background: "var(--surface)", flexShrink: 0 }}>
+          <button onClick={() => { setActiveCourse(null); setActiveModule(null); }} title="Back to courses"
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 6, display: "flex" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           </button>
+          <button onClick={() => setPlayerSidebar(!playerSidebar)} title="Toggle curriculum"
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 6, display: "flex" }}>
+            <Icon name="menu" size={20}/>
+          </button>
+          <div style={{ flex: 1 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
+            <div style={{ width: 100, height: 4, borderRadius: 2, background: "var(--border)" }}>
+              <div style={{ width: `${progressPct}%`, height: "100%", borderRadius: 2, background: "var(--accent)", transition: "width 0.3s" }}/>
+            </div>
+            <span style={{ fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{completedCount}/{modules.length}</span>
+          </div>
+          {nextMod && (
+            <button className="btn btn-primary" style={{ padding: "8px 20px", fontSize: 13, borderRadius: 6 }} onClick={() => goToModule(nextMod)}>
+              Complete and Continue ›
+            </button>
+          )}
           <ThemeToggle />
         </div>
-        <h1 className="page-title" style={{ marginBottom: 8 }}>{activeCourse.title}</h1>
-        <p style={{ color: "var(--text-muted)", margin: "0 0 24px", fontSize: 15 }}>{activeCourse.description}</p>
 
-        {activeCourse.modules.length === 0 ? (
-          <div className="card" style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
-            <p style={{ fontSize: 18, fontWeight: 600, color: "var(--text)" }}>No modules yet</p>
-            <p>The admin hasn&apos;t added modules to this course yet.</p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {activeCourse.modules.map((m, mi) => {
-              const moduleResults = results.filter(r => r.moduleId === m.id);
-              const bestScore = moduleResults.length > 0 ? Math.max(...moduleResults.map(r => r.percentage)) : null;
-              const passed = bestScore !== null && bestScore >= 70;
-              return (
-                <div key={m.id} className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", transition: "border-color 0.2s", gap: 12 }}
-                  onClick={() => setActiveModule(m)}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent)"}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0, flex: 1 }}>
-                    <div style={{
-                      width: 44, height: 44, borderRadius: 12,
-                      background: passed ? "var(--success-soft)" : "var(--surface-alt)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      color: passed ? "var(--success)" : "var(--accent)", fontWeight: 800, fontSize: 16, flexShrink: 0,
+        {/* ─── Body ─── */}
+        <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+
+          {/* Sidebar overlay for mobile */}
+          {playerSidebar && isMobile && (
+            <div onClick={() => setPlayerSidebar(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 5 }} />
+          )}
+
+          {/* ─── Sidebar: Curriculum ─── */}
+          {playerSidebar && (
+            <div style={{
+              width: isMobile ? "85vw" : 300, maxWidth: 320, flexShrink: 0, borderRight: "1px solid var(--border)",
+              background: "var(--surface)", overflowY: "auto", overflowX: "hidden",
+              position: isMobile ? "absolute" : "relative",
+              left: 0, top: 0, bottom: 0, zIndex: 10,
+              boxShadow: isMobile ? "4px 0 20px rgba(0,0,0,0.2)" : "none",
+            }}>
+              <div style={{ padding: "16px", borderBottom: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{activeCourse.title}</div>
+                {activeCourse.description && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{activeCourse.description}</div>}
+              </div>
+              {modules.map((m, i) => {
+                const isActive = currentModule && m.id === currentModule.id;
+                const isCompleted = results.some(r => r.moduleId === m.id && r.percentage >= 50);
+                return (
+                  <div key={m.id} onClick={() => goToModule(m)}
+                    style={{
+                      padding: "14px 16px", cursor: "pointer",
+                      display: "flex", alignItems: "flex-start", gap: 12,
+                      background: isActive ? "var(--accent-soft)" : "transparent",
+                      borderLeft: isActive ? "3px solid var(--accent)" : "3px solid transparent",
+                      borderBottom: "1px solid var(--border)",
+                      transition: "background 0.15s",
                     }}>
-                      {passed ? <Icon name="check" size={20}/> : mi + 1}
+                    {/* Completion circle */}
+                    <div style={{
+                      width: 24, height: 24, borderRadius: "50%", flexShrink: 0, marginTop: 1,
+                      border: isCompleted ? "none" : `2px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                      background: isCompleted ? "var(--accent)" : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "#fff", transition: "0.2s",
+                    }}>
+                      {isCompleted && <Icon name="check" size={12}/>}
+                      {isActive && !isCompleted && <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--accent)" }}/>}
                     </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 16, wordBreak: "break-word" }}>{m.title}</div>
-                      <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
-                        {m.pdfPath && <span className="badge badge-accent" style={{ fontSize: 10 }}>PDF</span>}
-                        {m.videoUrl && <span className="badge" style={{ fontSize: 10, background: "rgba(139,92,246,0.12)", color: "#8b5cf6" }}>VIDEO</span>}
-                        {m.test && <span className="badge" style={{ fontSize: 10, background: "rgba(124,58,237,0.12)", color: "#7c3aed" }}>{m.test.questions.length}Q TEST</span>}
-                        {bestScore !== null && <span className={`badge ${passed ? "badge-success" : "badge-warn"}`}>Best: {bestScore}%</span>}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: "var(--text)", lineHeight: 1.4 }}>{m.title}</div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
+                        {m.pdfPath && <span style={{ fontSize: 10, color: "var(--text-muted)" }}>📄 PDF</span>}
+                        {m.videoUrl && <span style={{ fontSize: 10, color: "#8b5cf6" }}>▶ Video</span>}
+                        {m.test && <span style={{ fontSize: 10, color: "var(--text-muted)" }}>📝 {m.test.questions.length}Q</span>}
                       </div>
                     </div>
                   </div>
-                  <Icon name="chevron" size={18}/>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Certificate button */}
-        {tenant?.featureCertificates && activeCourse.modules.length > 0 && (() => {
-          const modsWithTests = activeCourse.modules.filter(m => m.test);
-          const allPassed = modsWithTests.length > 0 && modsWithTests.every(m =>
-            results.some(r => r.moduleId === m.id && r.percentage >= 50)
-          );
-          if (!allPassed) return null;
-          return (
-            <div style={{ marginTop: 24, textAlign: "center" }}>
-              <button className="btn btn-primary" style={{ padding: "14px 32px", fontSize: 16 }}
-                onClick={() => window.open(`/api/certificates?courseId=${activeCourse.id}&format=html`, "_blank")}>
-                <Icon name="award" size={18}/> Download Certificate
-              </button>
+                );
+              })}
             </div>
-          );
-        })()}
+          )}
+
+          {/* ─── Main Content ─── */}
+          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+            {currentModule ? (
+              <div style={{ flex: 1, padding: isMobile ? "20px 16px" : "32px 40px", maxWidth: 960, width: "100%", margin: "0 auto" }}>
+
+                <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round">
+                    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/>
+                  </svg>
+                  {currentModule.title}
+                </h2>
+
+                {/* Video */}
+                {embedUrl && (
+                  <div style={{ width: "100%", aspectRatio: "16/9", borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)", marginBottom: 24 }}>
+                    <iframe src={embedUrl} title={currentModule.title} style={{ width: "100%", height: "100%", border: "none" }}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                  </div>
+                )}
+
+                {/* PDF */}
+                {currentModule.pdfPath && (
+                  <div style={{ marginBottom: 24 }}>
+                    <div style={{ width: "100%", height: isMobile ? "50vh" : "min(70vh, 700px)", minHeight: 280, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)" }}>
+                      <iframe src={currentModule.pdfPath} title={currentModule.pdfName} style={{ width: "100%", height: "100%", border: "none", background: "#fff" }}/>
+                    </div>
+                    <div style={{ marginTop: 10, textAlign: "center" }}>
+                      <a href={currentModule.pdfPath} target="_blank" rel="noopener" className="btn btn-sm btn-secondary">
+                        Open PDF in full screen ↗
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {/* No content */}
+                {!embedUrl && !currentModule.pdfPath && (
+                  <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
+                    <p style={{ fontSize: 16 }}>No content uploaded for this module yet.</p>
+                  </div>
+                )}
+
+                {/* Test button */}
+                {currentModule.test && (
+                  <div style={{ marginTop: 8, marginBottom: 24 }}>
+                    <button className="btn btn-primary" style={{ padding: "12px 32px", fontSize: 15 }}
+                      onClick={() => { setTakingTest(currentModule); setTestAnswers({}); }}>
+                      <Icon name="clip" size={16}/> Take Test ({currentModule.test.questions.length} questions)
+                    </button>
+                    {(() => {
+                      const best = results.filter(r => r.moduleId === currentModule.id);
+                      if (best.length === 0) return null;
+                      const top = Math.max(...best.map(r => r.percentage));
+                      return <span style={{ marginLeft: 12, fontSize: 13, color: top >= 50 ? "var(--success)" : "var(--text-muted)" }}>Best: {top}%</span>;
+                    })()}
+                  </div>
+                )}
+
+                {/* Bottom Complete and Continue */}
+                {nextMod && (
+                  <div style={{ marginTop: 20, paddingTop: 24, borderTop: "1px solid var(--border)" }}>
+                    <button className="btn btn-primary" style={{ padding: "14px 32px", fontSize: 15, borderRadius: 8 }} onClick={() => goToModule(nextMod)}>
+                      Complete and Continue ›
+                    </button>
+                  </div>
+                )}
+
+                {/* Certificate (show on last module when all passed) */}
+                {!nextMod && tenant?.featureCertificates && (() => {
+                  const modsWithTests = modules.filter(m => m.test);
+                  const allPassed = modsWithTests.length > 0 && modsWithTests.every(m => results.some(r => r.moduleId === m.id && r.percentage >= 50));
+                  if (!allPassed) return null;
+                  return (
+                    <div style={{ marginTop: 20, paddingTop: 24, borderTop: "1px solid var(--border)" }}>
+                      <button className="btn btn-primary" style={{ padding: "14px 32px", fontSize: 15 }}
+                        onClick={() => window.open(`/api/certificates?courseId=${activeCourse.id}&format=html`, "_blank")}>
+                        <Icon name="award" size={18}/> Download Certificate
+                      </button>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
+                <p>Select a module from the curriculum to begin.</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
       </>
     );
   }
 
-  // ── LEARNER HOME (sidebar + content) ──
+  // ══════════════════════════════════════
+  // LEARNER HOME (sidebar + content)
+  // ══════════════════════════════════════
   const navItems = [
     { icon: "book", label: "My Courses", key: "my-courses" },
     { icon: "award", label: "My Results", key: "my-results" },
@@ -357,9 +425,7 @@ export default function LearnerPage() {
       <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)}/>
 
       <div className="sidebar">
-        <div style={{ padding: "0 24px 24px", borderBottom: "1px solid var(--border)", marginBottom: 8 }}>
-          {Brand}
-        </div>
+        <div style={{ padding: "0 24px 24px", borderBottom: "1px solid var(--border)", marginBottom: 8 }}>{Brand}</div>
         {navItems.map(n => (
           <button key={n.key} className={`sidebar-item ${view === n.key ? "active" : ""}`} onClick={() => navigate(n.key)}>
             <Icon name={n.icon} size={18}/> {n.label}
@@ -374,9 +440,7 @@ export default function LearnerPage() {
       </div>
 
       <div className="mobile-topbar">
-        <button className="hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
-          <Icon name="menu" size={22}/>
-        </button>
+        <button className="hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu"><Icon name="menu" size={22}/></button>
         {Brand}
         <ThemeToggle />
       </div>
@@ -388,7 +452,7 @@ export default function LearnerPage() {
 
             {/* Continue where you left off */}
             {tenant?.featureContinue && progress.length > 0 && (() => {
-              const lastProgress = progress[0]; // sorted by lastAccess desc
+              const lastProgress = progress[0];
               const mod = lastProgress?.module;
               if (!mod) return null;
               const course = courses.find(c => c.id === mod.courseId);
@@ -407,6 +471,7 @@ export default function LearnerPage() {
                 </div>
               );
             })()}
+
             {courses.length === 0 ? (
               <div className="card" style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
                 <p style={{ fontSize: 18, fontWeight: 600, color: "var(--text)" }}>No courses available</p>
@@ -419,7 +484,7 @@ export default function LearnerPage() {
                   const completedMods = c.modules.filter(m => results.some(r => r.moduleId === m.id && r.percentage >= 70)).length;
                   return (
                     <div key={c.id} className="card" style={{ cursor: "pointer", transition: "border-color 0.2s" }}
-                      onClick={() => setActiveCourse(c)}
+                      onClick={() => { setActiveCourse(c); setActiveModule(c.modules[0] || null); }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent)"}
                       onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
                       <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700 }}>{c.title}</h3>
