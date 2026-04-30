@@ -77,6 +77,13 @@ export default function LearnerPage() {
     if (typeof window !== "undefined" && window.innerWidth < 768) setPlayerSidebar(false);
   }, [activeCourse]);
 
+  // Track progress when module changes
+  useEffect(() => {
+    if (activeModule && tenant?.featureContinue) {
+      fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ moduleId: activeModule.id }) }).catch(() => {});
+    }
+  }, [activeModule?.id, tenant?.featureContinue]);
+
   const logout = async () => {
     await fetch("/api/auth", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tenantSlug: tenant?.slug }) });
     router.push(tenant?.slug ? `/${tenant.slug}` : "/");
@@ -207,13 +214,6 @@ export default function LearnerPage() {
     const progressPct = modules.length > 0 ? Math.round((completedCount / modules.length) * 100) : 0;
     const embedUrl = currentModule ? toEmbedUrl(currentModule.videoUrl) : "";
     const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-
-    // Track progress
-    useEffect(() => {
-      if (currentModule && tenant?.featureContinue) {
-        fetch("/api/progress", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ moduleId: currentModule.id }) }).catch(() => {});
-      }
-    }, [currentModule?.id]);
 
     const goToModule = (m) => {
       setActiveModule(m);
