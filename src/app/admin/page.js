@@ -760,7 +760,8 @@ export default function AdminPage() {
                 {tenant?.featureVideos && (
                   <div>
                     <label className="label">Video URL (YouTube/Vimeo embed link)</label>
-                    <input className="input" value={moduleForm.videoUrl} onChange={e => setModuleForm(p => ({ ...p, videoUrl: e.target.value }))} placeholder="https://www.youtube.com/embed/..." />
+                    <input className="input" value={moduleForm.videoUrl} onChange={e => setModuleForm(p => ({ ...p, videoUrl: e.target.value }))} placeholder="Paste any YouTube or Vimeo link" />
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Accepts: youtube.com/watch?v=..., youtu.be/..., vimeo.com/..., or embed URLs</div>
                   </div>
                 )}
                 <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={addModule}><Icon name="plus" size={16}/> Add Module</button>
@@ -783,7 +784,8 @@ export default function AdminPage() {
                 {tenant?.featureVideos && (
                   <div>
                     <label className="label">Video URL (YouTube/Vimeo embed link)</label>
-                    <input className="input" value={moduleForm.videoUrl} onChange={e => setModuleForm(p => ({ ...p, videoUrl: e.target.value }))} placeholder="https://www.youtube.com/embed/..." />
+                    <input className="input" value={moduleForm.videoUrl} onChange={e => setModuleForm(p => ({ ...p, videoUrl: e.target.value }))} placeholder="Paste any YouTube or Vimeo link" />
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Accepts: youtube.com/watch?v=..., youtu.be/..., vimeo.com/..., or embed URLs</div>
                   </div>
                 )}
                 <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={editModule}><Icon name="check" size={16}/> Save Changes</button>

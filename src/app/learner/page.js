@@ -208,15 +208,23 @@ export default function LearnerPage() {
         <h1 className="page-title" style={{ marginBottom: 8 }}>{activeModule.title}</h1>
 
         {/* Video embed */}
-        {activeModule.videoUrl && (
+        {activeModule.videoUrl && (() => {
+          // Auto-convert YouTube URLs to embed format
+          let embedUrl = activeModule.videoUrl;
+          const ytMatch = embedUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|m\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]+)/);
+          if (ytMatch) embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}`;
+          const vimeoMatch = embedUrl.match(/vimeo\.com\/([0-9]+)/);
+          if (vimeoMatch && !embedUrl.includes("player.vimeo.com")) embedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+          return (
           <>
             <p style={{ color: "var(--text-muted)", margin: "0 0 12px", fontSize: 14 }}>Watch the video below to learn the material.</p>
             <div style={{ width: "100%", aspectRatio: "16/9", borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", marginBottom: 16 }}>
-              <iframe src={activeModule.videoUrl} title={activeModule.title} style={{ width: "100%", height: "100%", border: "none" }}
+              <iframe src={embedUrl} title={activeModule.title} style={{ width: "100%", height: "100%", border: "none" }}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
             </div>
           </>
-        )}
+          );
+        })()}
 
         {/* PDF viewer */}
         {activeModule.pdfPath ? (
