@@ -20,5 +20,5 @@ export async function GET(req) {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ courses, tenant: { name: tenant.name, paystackPublicKey: tenant.paystackPublicKey } });
+  return NextResponse.json({ courses, tenant: { name: tenant.name } });
 }

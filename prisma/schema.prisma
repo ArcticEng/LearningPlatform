@@ -32,8 +32,8 @@ model Tenant {
   featureAiImport     Boolean @default(true)   // AI test import from docs
   featureSelfRegister Boolean @default(false)  // learner self-registration with access codes
   featurePayments    Boolean @default(false)  // Paystack payment for course access
-  paystackPublicKey  String  @default("")     // pk_live_xxx or pk_test_xxx
-  paystackSecretKey  String  @default("")     // sk_live_xxx or sk_test_xxx
+  paystackSubaccount String  @default("")     // Paystack subaccount code (ACCT_xxx)
+  platformFeePercent Int     @default(10)      // % Onyx Digital takes per transaction
 
   active    Boolean  @default(true)
   createdAt DateTime @default(now())

@@ -70,7 +70,7 @@ const defaultTenantForm = {
   featureVideos: false, featureWhatsapp: false, whatsappNumber: "",
   featureCourseAccess: false, featureContinue: false, featureCertificates: false, featureAiImport: true,
   featureSelfRegister: false,
-  featurePayments: false, paystackPublicKey: "", paystackSecretKey: "",
+  featurePayments: false, paystackSubaccount: "", platformFeePercent: 10,
 };
 
 export default function SuperAdminPage() {
@@ -189,8 +189,8 @@ export default function SuperAdminPage() {
       featureCertificates: t.featureCertificates || false, featureAiImport: t.featureAiImport !== false,
       featureSelfRegister: t.featureSelfRegister || false,
       featurePayments: t.featurePayments || false,
-      paystackPublicKey: t.paystackPublicKey || "",
-      paystackSecretKey: t.paystackSecretKey || "",
+      paystackSubaccount: t.paystackSubaccount || "",
+      platformFeePercent: t.platformFeePercent || 10,
     });
     setShowEdit(t);
   };
@@ -440,14 +440,19 @@ export default function SuperAdminPage() {
             {form.featurePayments && (
               <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
                 <div>
-                  <label className="label">Paystack Public Key</label>
-                  <input className="input" value={form.paystackPublicKey || ""} onChange={e => set("paystackPublicKey", e.target.value)} placeholder="pk_live_xxx or pk_test_xxx" style={{ fontFamily: "monospace", fontSize: 12 }} />
+                  <label className="label">Paystack Subaccount Code</label>
+                  <input className="input" value={form.paystackSubaccount || ""} onChange={e => set("paystackSubaccount", e.target.value)} placeholder="ACCT_xxxxxxxxx" style={{ fontFamily: "monospace", fontSize: 12 }} />
                 </div>
                 <div>
-                  <label className="label">Paystack Secret Key</label>
-                  <input className="input" value={form.paystackSecretKey || ""} onChange={e => set("paystackSecretKey", e.target.value)} placeholder="sk_live_xxx or sk_test_xxx" style={{ fontFamily: "monospace", fontSize: 12 }} />
+                  <label className="label">Platform Fee (%)</label>
+                  <input className="input" type="number" min="0" max="50" value={form.platformFeePercent || 10} onChange={e => set("platformFeePercent", parseInt(e.target.value) || 10)} />
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>% of each sale that goes to Onyx Digital. Paystack fees covered from this amount.</div>
                 </div>
-                <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Get these from your Paystack dashboard → Settings → API Keys</div>
+                {!form.paystackSubaccount && (
+                  <div style={{ padding: 12, background: "var(--warn-soft)", borderRadius: 8, fontSize: 12, color: "var(--warn)" }}>
+                    No subaccount linked. Create one in your Paystack dashboard under Subaccounts, then enter the code here.
+                  </div>
+                )}
               </div>
             )}
           </div>

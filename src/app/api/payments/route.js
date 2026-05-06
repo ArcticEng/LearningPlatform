@@ -4,7 +4,9 @@ import { prisma } from "@/lib/db";
 import { signToken, setSessionCookie } from "@/lib/auth";
 import { v4 as uuid } from "uuid";
 
-// POST /api/payments - initialize payment
+const PAYSTACK_SECRET = () => process.env.PAYSTACK_SECRET_KEY;
+
+// POST /api/payments - initialize payment with split
 export async function POST(req) {
   const { tenantSlug, courseId, email, name, idNumber } = await req.json();
 
@@ -12,35 +14,40 @@ export async function POST(req) {
     return NextResponse.json({ error: "tenantSlug, courseId, and email are required" }, { status: 400 });
   }
 
+  if (!PAYSTACK_SECRET()) {
+    return NextResponse.json({ error: "Payment system not configured" }, { status: 500 });
+  }
+
   const tenant = await prisma.tenant.findUnique({ where: { slug: tenantSlug.toLowerCase().trim() } });
   if (!tenant) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
   if (!tenant.active) return NextResponse.json({ error: "Organization disabled" }, { status: 403 });
   if (!tenant.featurePayments) return NextResponse.json({ error: "Payments not enabled" }, { status: 403 });
-  if (!tenant.paystackSecretKey) return NextResponse.json({ error: "Payment not configured" }, { status: 500 });
+  if (!tenant.paystackSubaccount) return NextResponse.json({ error: "Payment account not configured for this organization" }, { status: 500 });
 
   const course = await prisma.course.findFirst({ where: { id: courseId, tenantId: tenant.id } });
   if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 });
   if (course.price <= 0) return NextResponse.json({ error: "This course is free" }, { status: 400 });
 
   const ref = `PAY-${uuid().slice(0, 8).toUpperCase()}`;
-
-  // Derive base URL from request
   const reqUrl = new URL(req.url);
   const baseUrl = `${reqUrl.protocol}//${reqUrl.host}`;
 
-  // Initialize Paystack transaction
+  // Initialize Paystack transaction with SPLIT
   const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${tenant.paystackSecretKey}`,
+      Authorization: `Bearer ${PAYSTACK_SECRET()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
       email,
-      amount: course.price,
+      amount: course.price, // in cents
       currency: course.currency || "ZAR",
       reference: ref,
       callback_url: `${baseUrl}/${tenantSlug}/payment/verify?ref=${ref}`,
+      // SPLIT PAYMENT: subaccount gets (100 - platformFeePercent)%, Onyx Digital keeps platformFeePercent%
+      subaccount: tenant.paystackSubaccount,
+      bearer: "account", // Onyx Digital (main account) bears Paystack fees
       metadata: {
         tenantId: tenant.id,
         courseId: course.id,
@@ -48,6 +55,7 @@ export async function POST(req) {
         studentName: name || "",
         studentIdNumber: idNumber || "",
         tenantSlug,
+        platformFee: `${tenant.platformFeePercent || 10}%`,
       },
     }),
   });
@@ -94,14 +102,13 @@ export async function GET(req) {
     return NextResponse.json({ status: "success", message: "Payment already verified" });
   }
 
-  const tenant = await prisma.tenant.findUnique({ where: { id: payment.tenantId } });
-  if (!tenant?.paystackSecretKey) {
+  if (!PAYSTACK_SECRET()) {
     return NextResponse.json({ error: "Payment verification not configured" }, { status: 500 });
   }
 
-  // Verify with Paystack
+  // Verify with Paystack using Onyx Digital's master key
   const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${ref}`, {
-    headers: { Authorization: `Bearer ${tenant.paystackSecretKey}` },
+    headers: { Authorization: `Bearer ${PAYSTACK_SECRET()}` },
   });
   const verifyData = await verifyRes.json();
 
@@ -110,13 +117,14 @@ export async function GET(req) {
     return NextResponse.json({ status: "failed", message: "Payment was not successful" }, { status: 400 });
   }
 
+  const tenant = await prisma.tenant.findUnique({ where: { id: payment.tenantId } });
+
   // Payment successful — create learner account if not exists
   let user = await prisma.user.findFirst({
     where: { idNumber: payment.idNumber || payment.email, tenantId: tenant.id },
   });
 
   if (!user) {
-    // Generate a default password (they'll need to set it via the registration form or admin can reset)
     const tempPassword = uuid().slice(0, 8);
     user = await prisma.user.create({
       data: {
@@ -132,7 +140,7 @@ export async function GET(req) {
   // Grant course access
   await prisma.courseAccess.create({
     data: { userId: user.id, courseId: payment.courseId, tenantId: tenant.id },
-  }).catch(() => {}); // ignore if already granted
+  }).catch(() => {});
 
   // Update payment record
   await prisma.payment.update({
