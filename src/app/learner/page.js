@@ -54,6 +54,18 @@ export default function LearnerPage() {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [showReschedule, setShowReschedule] = useState(null);
   const [selectedNewSlot, setSelectedNewSlot] = useState(null);
+  const [winW, setWinW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
+
+  // Track viewport width so PDF zoom recalculates on resize / orientation change
+  useEffect(() => {
+    const on = () => setWinW(window.innerWidth);
+    window.addEventListener("resize", on);
+    window.addEventListener("orientationchange", on);
+    return () => {
+      window.removeEventListener("resize", on);
+      window.removeEventListener("orientationchange", on);
+    };
+  }, []);
 
   useEffect(() => {
     if (sidebarOpen) document.body.classList.add("sidebar-open");
@@ -130,6 +142,18 @@ export default function LearnerPage() {
     const vim = u.match(/vimeo\.com\/([0-9]+)/);
     if (vim && !u.includes("player.vimeo.com")) return `https://player.vimeo.com/video/${vim[1]}`;
     return u;
+  };
+
+  // Helper: append zoom params to PDF URL for narrow viewports.
+  // Uses both view=FitH and zoom=page-width — different mobile browsers
+  // honour different fragments. Chrome/Firefox respect these; iOS Safari
+  // tends to ignore them (use the "Open in full screen" link as fallback).
+  const toPdfUrl = (url) => {
+    if (!url) return "";
+    if (winW >= 768) return url;
+    // Strip any existing fragment, then append our params
+    const base = url.split("#")[0];
+    return `${base}#view=FitH&zoom=page-width&toolbar=0&navpanes=0`;
   };
 
   if (!user) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "var(--text-muted)" }}>Loading…</div>;
@@ -228,7 +252,7 @@ export default function LearnerPage() {
     const completedCount = modules.filter(m => results.some(r => r.moduleId === m.id && r.percentage >= 50)).length;
     const progressPct = modules.length > 0 ? Math.round((completedCount / modules.length) * 100) : 0;
     const embedUrl = currentModule ? toEmbedUrl(currentModule.videoUrl) : "";
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    const isMobile = winW < 768;
 
     const goToModule = (m) => {
       setActiveModule(m);
@@ -365,7 +389,7 @@ export default function LearnerPage() {
                   {/* PDF — fills ALL remaining vertical space */}
                   {currentModule.pdfPath && (
                     <div className="pdf-viewer-wrap" style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-                      <iframe src={currentModule.pdfPath} title={currentModule.pdfName}
+                      <iframe key={`${currentModule.id}-${isMobile ? "m" : "d"}`} src={toPdfUrl(currentModule.pdfPath)} title={currentModule.pdfName}
                         style={{ width: "100%", height: "100%", border: "none", background: "#fff", display: "block" }}/>
                     </div>
                   )}
