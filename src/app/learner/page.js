@@ -22,6 +22,7 @@ function Icon({ name, size = 20 }) {
     file: "M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z",
     menu: "M3 12h18M3 6h18M3 18h18",
     chevron: "M9 18l6-6-6-6",
+    calendar: "M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM16 2v4M8 2v4M3 10h18",
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -49,6 +50,10 @@ export default function LearnerPage() {
   const [testResult, setTestResult] = useState(null);
   const [progress, setProgress] = useState([]);
   const [playerSidebar, setPlayerSidebar] = useState(true);
+  const [myBookings, setMyBookings] = useState([]);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [showReschedule, setShowReschedule] = useState(null);
+  const [selectedNewSlot, setSelectedNewSlot] = useState(null);
 
   useEffect(() => {
     if (sidebarOpen) document.body.classList.add("sidebar-open");
@@ -63,6 +68,11 @@ export default function LearnerPage() {
     setProgress(p.progress || []);
   }, []);
 
+  const loadBookings = useCallback(async () => {
+    const b = await api.get("/api/bookings");
+    setMyBookings((b.bookings || []).filter(bk => bk.status === "confirmed"));
+  }, []);
+
   useEffect(() => {
     api.get("/api/auth").then(d => {
       if (!d.user || d.user.role !== "learner") { router.push("/"); return; }
@@ -71,6 +81,11 @@ export default function LearnerPage() {
       loadData();
     });
   }, [router, loadData]);
+
+  // Load bookings when tenant is available and feature enabled
+  useEffect(() => {
+    if (tenant?.featureBookings) loadBookings();
+  }, [tenant, loadBookings]);
 
   // Auto-hide sidebar on mobile
   useEffect(() => {
@@ -409,6 +424,7 @@ export default function LearnerPage() {
   // ══════════════════════════════════════
   const navItems = [
     { icon: "book", label: "My Courses", key: "my-courses" },
+    ...(tenant?.featureBookings && myBookings.length > 0 ? [{ icon: "calendar", label: "My Bookings", key: "my-bookings" }] : []),
     { icon: "award", label: "My Results", key: "my-results" },
   ];
 
@@ -503,6 +519,20 @@ export default function LearnerPage() {
                           </div>
                         )}
                       </div>
+                      {/* Booking badge */}
+                      {(() => {
+                        const booking = myBookings.find(b => b.courseId === c.id);
+                        if (!booking?.slot) return null;
+                        const bDate = new Date(booking.slot.date).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
+                        return (
+                          <div style={{ marginTop: 10, padding: "8px 12px", background: "var(--accent-soft)", borderRadius: 8, fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                            <Icon name="calendar" size={14}/>
+                            <span style={{ fontWeight: 600 }}>{bDate}</span>
+                            {booking.slot.startTime && <span style={{ color: "var(--text-muted)" }}>{booking.slot.startTime}{booking.slot.endTime ? ` – ${booking.slot.endTime}` : ""}</span>}
+                            {booking.slot.location && <span style={{ color: "var(--text-muted)" }}>· {booking.slot.location}</span>}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
