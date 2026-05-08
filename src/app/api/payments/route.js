@@ -8,7 +8,7 @@ const PAYSTACK_SECRET = () => process.env.PAYSTACK_SECRET_KEY;
 
 // POST /api/payments - initialize payment with split
 export async function POST(req) {
-  const { tenantSlug, courseId, email, name, idNumber } = await req.json();
+  const { tenantSlug, courseId, email, name, idNumber, phone, bookingSlotId } = await req.json();
 
   if (!tenantSlug || !courseId || !email) {
     return NextResponse.json({ error: "tenantSlug, courseId, and email are required" }, { status: 400 });
@@ -54,6 +54,8 @@ export async function POST(req) {
         courseName: course.title,
         studentName: name || "",
         studentIdNumber: idNumber || "",
+        studentPhone: phone || "",
+        bookingSlotId: bookingSlotId || "",
         tenantSlug,
         platformFee: `${tenant.platformFeePercent || 10}%`,
       },
@@ -141,6 +143,30 @@ export async function GET(req) {
   await prisma.courseAccess.create({
     data: { userId: user.id, courseId: payment.courseId, tenantId: tenant.id },
   }).catch(() => {});
+
+  // Create booking if a slot was selected
+  const metadata = verifyData.data.metadata || {};
+  if (metadata.bookingSlotId) {
+    try {
+      await fetch(new URL("/api/bookings", req.url).href, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slotId: metadata.bookingSlotId,
+          studentName: payment.name,
+          studentEmail: payment.email,
+          studentPhone: metadata.studentPhone || "",
+          studentId: payment.idNumber,
+          courseId: payment.courseId,
+          tenantSlug: tenant.slug,
+          userId: user.id,
+          paymentId: payment.id,
+        }),
+      });
+    } catch (e) {
+      console.error("[BOOKING] Failed to create after payment:", e.message);
+    }
+  }
 
   // Update payment record
   await prisma.payment.update({

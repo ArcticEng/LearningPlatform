@@ -71,6 +71,7 @@ const defaultTenantForm = {
   featureCourseAccess: false, featureContinue: false, featureCertificates: false, featureAiImport: true,
   featureSelfRegister: false,
   featurePayments: false, paystackSubaccount: "", platformFeePercent: 10,
+  featureBookings: false, bookingAdminEmail: "",
 };
 
 export default function SuperAdminPage() {
@@ -191,6 +192,8 @@ export default function SuperAdminPage() {
       featurePayments: t.featurePayments || false,
       paystackSubaccount: t.paystackSubaccount || "",
       platformFeePercent: t.platformFeePercent || 10,
+      featureBookings: t.featureBookings || false,
+      bookingAdminEmail: t.bookingAdminEmail || "",
     });
     setShowEdit(t);
   };
@@ -409,6 +412,7 @@ export default function SuperAdminPage() {
               ["featureWhatsapp", "WhatsApp Button", "Floating contact button for students"],
               ["featureSelfRegister", "Self-Registration", "Students register with access codes (no manual enrollment needed)"],
               ["featurePayments", "Course Payments", "Students can purchase courses via Paystack (credit card, EFT, etc.)"],
+              ["featureBookings", "Booking Calendar", "Students can book in-person training dates. Confirmation emails sent automatically."],
             ].map(([key, label, desc]) => (
               <div key={key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
                 <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, flexShrink: 0 }}>
@@ -453,6 +457,12 @@ export default function SuperAdminPage() {
                     No subaccount linked. Create one in your Paystack dashboard under Subaccounts, then enter the code here.
                   </div>
                 )}
+              </div>
+            )}
+            {form.featureBookings && (
+              <div style={{ marginTop: 12 }}>
+                <label className="label">Booking Admin Email (receives booking notifications)</label>
+                <input className="input" type="email" value={form.bookingAdminEmail || ""} onChange={e => set("bookingAdminEmail", e.target.value)} placeholder="admin@example.com" />
               </div>
             )}
           </div>

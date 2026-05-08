@@ -22,6 +22,7 @@ function Icon({ name, size = 20 }) {
     plus: "M12 5v14M5 12h14",
     trash: "M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
     lock: "M7 11V7a5 5 0 0 1 10 0v4",
+    calendar: "M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM16 2v4M8 2v4M3 10h18",
     out: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4",
     x: "M18 6L6 18M6 6l12 12",
     check: "M20 6L9 17l-5-5",
@@ -90,6 +91,10 @@ export default function AdminPage() {
   const [showCourseAccess, setShowCourseAccess] = useState(null);
   const [courseAccessList, setCourseAccessList] = useState([]);
   const [learnerCourseIds, setLearnerCourseIds] = useState(new Set());
+  const [bookingSlots, setBookingSlots] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [showCreateSlot, setShowCreateSlot] = useState(false);
+  const [slotForm, setSlotForm] = useState({ title: "", date: "", startTime: "", endTime: "", location: "", capacity: 10, courseId: "" });
 
   // Forms
   const [learnerForm, setLearnerForm] = useState({ name: "", idNumber: "", password: "" });
@@ -142,6 +147,10 @@ export default function AdminPage() {
   useEffect(() => {
     if (view === "access-codes" && tenant?.featureSelfRegister) {
       api.get("/api/access-codes").then(d => setAccessCodes(d.codes || []));
+    }
+    if (view === "bookings" && tenant?.featureBookings) {
+      api.get("/api/booking-slots").then(d => setBookingSlots(d.slots || []));
+      api.get("/api/bookings").then(d => setBookings(d.bookings || []));
     }
   }, [view, tenant]);
 
@@ -407,6 +416,7 @@ export default function AdminPage() {
     { icon: "book", label: "Courses", key: "courses" },
     { icon: "chart", label: "Results", key: "results" },
     ...(tenant?.featureSelfRegister ? [{ icon: "lock", label: "Access Codes", key: "access-codes" }] : []),
+    ...(tenant?.featureBookings ? [{ icon: "calendar", label: "Bookings", key: "bookings" }] : []),
   ];
 
   const Brand = (
@@ -910,6 +920,125 @@ export default function AdminPage() {
                     <input className="input" type="number" min="0" value={codeForm.maxUses} onChange={e => setCodeForm(p => ({ ...p, maxUses: parseInt(e.target.value) || 0 }))} />
                   </div>
                   <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={createCode}><Icon name="plus" size={16}/> Create Code</button>
+                </div>
+              </Modal>
+            </div>
+          );
+        })()}
+
+        {/* BOOKINGS */}
+        {view === "bookings" && (() => {
+          const reloadBookings = async () => {
+            const [s, b] = await Promise.all([api.get("/api/booking-slots"), api.get("/api/bookings")]);
+            setBookingSlots(s.slots || []);
+            setBookings(b.bookings || []);
+          };
+          const createSlot = async () => {
+            if (!slotForm.date) return alert("Date is required");
+            await api.post("/api/booking-slots", slotForm);
+            setSlotForm({ title: "", date: "", startTime: "", endTime: "", location: "", capacity: 10, courseId: "" });
+            setShowCreateSlot(false);
+            reloadBookings();
+          };
+          const deleteSlot = async (id) => {
+            if (!confirm("Delete this slot and all its bookings?")) return;
+            await api.del("/api/booking-slots", { id });
+            reloadBookings();
+          };
+          const cancelBooking = async (id) => {
+            if (!confirm("Cancel this booking?")) return;
+            await api.del("/api/bookings", { id });
+            reloadBookings();
+          };
+
+          // Group slots by month
+          const grouped = {};
+          bookingSlots.forEach(s => {
+            const key = new Date(s.date).toLocaleDateString("en-ZA", { month: "long", year: "numeric" });
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(s);
+          });
+
+          return (
+            <div>
+              <div className="page-header">
+                <h1 className="page-title" style={{ margin: 0 }}>Bookings</h1>
+                <button className="btn btn-primary" onClick={() => setShowCreateSlot(true)}>
+                  <Icon name="plus" size={16}/> Add Date Slot
+                </button>
+              </div>
+
+              {bookingSlots.length === 0 ? (
+                <div className="card" style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
+                  <p style={{ fontSize: 18, fontWeight: 600, color: "var(--text)" }}>No booking slots</p>
+                  <p>Create available dates for students to book in-person training.</p>
+                </div>
+              ) : (
+                Object.entries(grouped).map(([month, slots]) => (
+                  <div key={month} style={{ marginBottom: 24 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>{month}</h3>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {slots.map(s => {
+                        const slotBookings = s.bookings || [];
+                        const dateStr = new Date(s.date).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
+                        const isFull = s.bookedCount >= s.capacity;
+                        return (
+                          <div key={s.id} className="card" style={{ padding: "16px 20px" }}>
+                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                              <div style={{ flex: 1, minWidth: 200 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                                  <span style={{ fontSize: 16, fontWeight: 700 }}>{dateStr}</span>
+                                  {s.startTime && <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{s.startTime}{s.endTime ? ` – ${s.endTime}` : ""}</span>}
+                                </div>
+                                {s.title && <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{s.title}</div>}
+                                {s.location && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>📍 {s.location}</div>}
+                                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                                  <span className={`badge ${isFull ? "badge-danger" : "badge-success"}`}>{s.bookedCount}/{s.capacity} booked</span>
+                                  {isFull && <span className="badge badge-warn">Full</span>}
+                                </div>
+                              </div>
+                              <div style={{ display: "flex", gap: 6 }}>
+                                <button className="btn btn-sm btn-danger" onClick={() => deleteSlot(s.id)}><Icon name="trash" size={14}/></button>
+                              </div>
+                            </div>
+                            {/* Show bookings for this slot */}
+                            {slotBookings.length > 0 && (
+                              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Bookings ({slotBookings.length})</div>
+                                {slotBookings.map(b => (
+                                  <div key={b.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)", fontSize: 13, gap: 8 }}>
+                                    <span style={{ fontWeight: 600 }}>{b.studentName}</span>
+                                    <span style={{ color: "var(--text-muted)" }}>{b.studentEmail}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+
+              <Modal open={showCreateSlot} onClose={() => setShowCreateSlot(false)} title="Add Booking Slot">
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div><label className="label">Date</label><input className="input" type="date" value={slotForm.date} onChange={e => setSlotForm(p => ({ ...p, date: e.target.value }))}/></div>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <div style={{ flex: 1 }}><label className="label">Start Time</label><input className="input" type="time" value={slotForm.startTime} onChange={e => setSlotForm(p => ({ ...p, startTime: e.target.value }))}/></div>
+                    <div style={{ flex: 1 }}><label className="label">End Time</label><input className="input" type="time" value={slotForm.endTime} onChange={e => setSlotForm(p => ({ ...p, endTime: e.target.value }))}/></div>
+                  </div>
+                  <div><label className="label">Title (optional)</label><input className="input" value={slotForm.title} onChange={e => setSlotForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Gel Nails Practical - Morning"/></div>
+                  <div><label className="label">Location (optional)</label><input className="input" value={slotForm.location} onChange={e => setSlotForm(p => ({ ...p, location: e.target.value }))} placeholder="e.g. Studio A, Cape Town"/></div>
+                  <div><label className="label">Capacity</label><input className="input" type="number" min="1" value={slotForm.capacity} onChange={e => setSlotForm(p => ({ ...p, capacity: parseInt(e.target.value) || 10 }))}/></div>
+                  <div>
+                    <label className="label">Link to Course (optional)</label>
+                    <select className="input" value={slotForm.courseId} onChange={e => setSlotForm(p => ({ ...p, courseId: e.target.value }))}>
+                      <option value="">Any course / general</option>
+                      {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                    </select>
+                  </div>
+                  <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={createSlot}><Icon name="plus" size={16}/> Add Slot</button>
                 </div>
               </Modal>
             </div>

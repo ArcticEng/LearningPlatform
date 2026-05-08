@@ -10,9 +10,11 @@ export default function CourseCatalogPage() {
   const [tenant, setTenant] = useState(null);
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
-  const [form, setForm] = useState({ email: "", name: "", idNumber: "" });
+  const [form, setForm] = useState({ email: "", name: "", idNumber: "", phone: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [selectedSlot, setSelectedSlot] = useState(null);
 
   useEffect(() => {
     fetch(`/api/tenant?slug=${encodeURIComponent(slug)}`)
@@ -31,6 +33,10 @@ export default function CourseCatalogPage() {
       setError("All fields are required");
       return;
     }
+    if (tenant?.featureBookings && availableSlots.length > 0 && !selectedSlot) {
+      setError("Please select a training date");
+      return;
+    }
     setError("");
     setLoading(true);
 
@@ -44,6 +50,8 @@ export default function CourseCatalogPage() {
           email: form.email,
           name: form.name,
           idNumber: form.idNumber,
+          phone: form.phone,
+          bookingSlotId: selectedSlot?.id || null,
         }),
       });
       const data = await res.json();
@@ -97,7 +105,14 @@ export default function CourseCatalogPage() {
                   cursor: "pointer", transition: "border-color 0.2s, transform 0.2s",
                   border: selectedCourse?.id === c.id ? "2px solid var(--accent)" : "1px solid var(--border)",
                 }}
-                  onClick={() => { setSelectedCourse(c); setError(""); }}
+                  onClick={() => {
+                    setSelectedCourse(c); setError(""); setSelectedSlot(null);
+                    // Load booking slots if bookings enabled
+                    if (tenant?.featureBookings) {
+                      fetch(`/api/booking-slots?slug=${encodeURIComponent(slug)}&future=true&courseId=${c.id}`)
+                        .then(r => r.json()).then(d => setAvailableSlots(d.slots || [])).catch(() => setAvailableSlots([]));
+                    }
+                  }}
                   onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
                   onMouseLeave={e => e.currentTarget.style.transform = "none"}>
                   <h3 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700 }}>{c.title}</h3>
@@ -138,6 +153,40 @@ export default function CourseCatalogPage() {
                     <input className="input" value={form.idNumber} onChange={e => setForm(p => ({ ...p, idNumber: e.target.value }))} placeholder="Your ID number (becomes your login)" />
                     <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>This will be your login username</div>
                   </div>
+                  {tenant?.featureBookings && (
+                    <div>
+                      <label className="label">Phone Number</label>
+                      <input className="input" type="tel" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="e.g. 079 123 4567" />
+                    </div>
+                  )}
+
+                  {/* Booking date selection */}
+                  {tenant?.featureBookings && availableSlots.length > 0 && (
+                    <div>
+                      <label className="label">Select Training Date</label>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 240, overflowY: "auto", padding: 2 }}>
+                        {availableSlots.map(s => {
+                          const dateStr = new Date(s.date).toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+                          const isSelected = selectedSlot?.id === s.id;
+                          return (
+                            <div key={s.id} onClick={() => setSelectedSlot(s)}
+                              style={{
+                                padding: "12px 16px", borderRadius: 10, cursor: "pointer", transition: "0.15s",
+                                border: isSelected ? "2px solid var(--accent)" : "1px solid var(--border)",
+                                background: isSelected ? "var(--accent-soft)" : "var(--surface-alt)",
+                              }}>
+                              <div style={{ fontWeight: 600, fontSize: 14 }}>{dateStr}</div>
+                              <div style={{ display: "flex", gap: 12, marginTop: 4, fontSize: 12, color: "var(--text-muted)" }}>
+                                {s.startTime && <span>🕒 {s.startTime}{s.endTime ? ` – ${s.endTime}` : ""}</span>}
+                                {s.location && <span>📍 {s.location}</span>}
+                                <span>{s.spotsLeft} spot{s.spotsLeft !== 1 ? "s" : ""} left</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {error && (
                     <div style={{ color: "var(--danger)", fontSize: 13, padding: "10px 14px", background: "var(--danger-soft)", borderRadius: 8 }}>

@@ -32,6 +32,8 @@ model Tenant {
   featureAiImport     Boolean @default(true)   // AI test import from docs
   featureSelfRegister Boolean @default(false)  // learner self-registration with access codes
   featurePayments    Boolean @default(false)  // Paystack payment for course access
+  featureBookings    Boolean @default(false)  // booking calendar for in-person training
+  bookingAdminEmail  String  @default("")     // email to receive booking notifications
   paystackSubaccount String  @default("")     // Paystack subaccount code (ACCT_xxx)
   platformFeePercent Int     @default(10)      // % Onyx Digital takes per transaction
 
@@ -198,4 +200,40 @@ model Payment {
   accessCode      String   @default("") // our access code (if used alongside)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model BookingSlot {
+  id          String    @id @default(uuid())
+  tenantId    String
+  courseId    String?                          // optional: tie slot to specific course
+  title       String    @default("")           // e.g. "Gel Nails Practical - Morning"
+  date        DateTime                         // the date of the session
+  startTime   String    @default("")           // e.g. "09:00"
+  endTime     String    @default("")           // e.g. "12:00"
+  location    String    @default("")           // e.g. "Studio A, Cape Town"
+  capacity    Int       @default(10)           // max students
+  bookedCount Int       @default(0)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  bookings    Booking[]
+}
+
+model Booking {
+  id            String      @id @default(uuid())
+  tenantId      String
+  slotId        String
+  slot          BookingSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  courseId      String?
+  studentName   String
+  studentEmail  String
+  studentPhone  String      @default("")
+  studentId     String      @default("")       // ID number
+  userId        String?                         // if registered user
+  paymentId     String?                         // if linked to a payment
+  status        String      @default("confirmed") // confirmed | cancelled
+  notes         String      @default("")
+  createdAt     DateTime    @default(now())
+
+  @@unique([slotId, studentEmail])
 }

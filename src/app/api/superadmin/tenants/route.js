@@ -92,7 +92,8 @@ export async function PUT(req) {
   // Only allow updating specific fields
   const allowed = ["name", "tagline", "logoUrl", "colorPrimary", "colorSecondary", "colorAccent", "colorBgDark", "fontHeading", "fontBody", "active",
     "featureVideos", "featureWhatsapp", "whatsappNumber", "featureCourseAccess", "featureContinue", "featureCertificates", "featureAiImport", "featureSelfRegister",
-    "featurePayments", "paystackSubaccount", "platformFeePercent"];
+    "featurePayments", "paystackSubaccount", "platformFeePercent",
+    "featureBookings", "bookingAdminEmail"];
   const updateData = {};
   for (const key of allowed) {
     if (data[key] !== undefined) updateData[key] = data[key];

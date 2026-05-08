@@ -18,6 +18,7 @@ export async function GET(req) {
       featureAiImport: true,
       featureSelfRegister: true,
       featurePayments: true,
+      featureBookings: true, bookingAdminEmail: true,
     },
   });
 
