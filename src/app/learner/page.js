@@ -240,27 +240,24 @@ export default function LearnerPage() {
       <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", flexDirection: "column", background: "var(--bg)" }}>
 
         {/* ─── Top Bar ─── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 16px", height: 52, borderBottom: "1px solid var(--border)", background: "var(--surface)", flexShrink: 0 }}>
+        <div className="player-topbar">
           <button onClick={() => { setActiveCourse(null); setActiveModule(null); }} title="Back to courses"
-            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 6, display: "flex" }}>
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 6, display: "flex", flexShrink: 0 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           </button>
           <button onClick={() => setPlayerSidebar(!playerSidebar)} title="Toggle curriculum"
-            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 6, display: "flex" }}>
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 6, display: "flex", flexShrink: 0 }}>
             <Icon name="menu" size={20}/>
           </button>
-          <div style={{ flex: 1 }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
-            <div style={{ width: 100, height: 4, borderRadius: 2, background: "var(--border)" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "var(--text-muted)" }}>{activeCourse.title}</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+            <div style={{ width: 60, height: 4, borderRadius: 2, background: "var(--border)" }}>
               <div style={{ width: `${progressPct}%`, height: "100%", borderRadius: 2, background: "var(--accent)", transition: "width 0.3s" }}/>
             </div>
-            <span style={{ fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{completedCount}/{modules.length}</span>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{completedCount}/{modules.length}</span>
           </div>
-          {nextMod && (
-            <button className="btn btn-primary" style={{ padding: "8px 20px", fontSize: 13, borderRadius: 6 }} onClick={() => goToModule(nextMod)}>
-              Complete and Continue ›
-            </button>
-          )}
           <ThemeToggle />
         </div>
 
@@ -328,27 +325,29 @@ export default function LearnerPage() {
             {currentModule ? (
               <>
                 {/* Module title bar */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 20px", borderBottom: "1px solid var(--border)", flexShrink: 0, flexWrap: "wrap", gap: 8 }}>
-                  <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round">
-                      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/>
-                    </svg>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0, gap: 6, minHeight: 44 }}>
+                  <div style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {currentModule.title}
-                  </h2>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                     {currentModule.test && (
-                      <button className="btn btn-sm btn-primary" style={{ fontSize: 12, padding: "6px 14px" }}
+                      <button className="btn btn-sm btn-primary" style={{ fontSize: 11, padding: "5px 10px" }}
                         onClick={() => { setTakingTest(currentModule); setTestAnswers({}); }}>
-                        <Icon name="clip" size={13}/> Take Test ({currentModule.test.questions.length}Q)
+                        Test ({currentModule.test.questions.length}Q)
                       </button>
                     )}
                     {(() => {
                       const best = results.filter(r => r.moduleId === currentModule.id);
                       if (best.length === 0) return null;
                       const top = Math.max(...best.map(r => r.percentage));
-                      return <span className={`badge ${top >= 50 ? "badge-success" : "badge-warn"}`} style={{ fontSize: 11 }}>Best: {top}%</span>;
+                      return <span className={`badge ${top >= 50 ? "badge-success" : "badge-warn"}`} style={{ fontSize: 10 }}>{top}%</span>;
                     })()}
-                    <a href={currentModule.pdfPath || "#"} target="_blank" rel="noopener" style={{ fontSize: 12, color: "var(--text-muted)", textDecoration: "none", display: currentModule.pdfPath ? "inline" : "none" }}>↗</a>
+                    {currentModule.pdfPath && (
+                      <a href={currentModule.pdfPath} target="_blank" rel="noopener" title="Open PDF in full screen"
+                        style={{ color: "var(--text-muted)", padding: 4, display: "flex" }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      </a>
+                    )}
                   </div>
                 </div>
 

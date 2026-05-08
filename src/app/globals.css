@@ -439,6 +439,107 @@ td {
   height: 100% !important;
 }
 
+/* ─── Course Player Mobile ─── */
+.player-sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  overflow-y: auto;
+}
+.player-content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.player-module-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 44px;
+}
+.player-module-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.player-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 48px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .player-sidebar {
+    position: fixed !important;
+    right: 0; top: 0; bottom: 0;
+    z-index: 110;
+    width: 85vw !important;
+    max-width: 320px;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.3);
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+  }
+  .player-sidebar.open {
+    transform: translateX(0);
+  }
+  .player-sidebar-overlay {
+    position: fixed; inset: 0; z-index: 105;
+    background: rgba(0,0,0,0.5);
+  }
+  .player-module-bar {
+    padding: 6px 12px;
+  }
+  .player-module-title {
+    font-size: 13px;
+  }
+  .player-topbar {
+    padding: 0 8px;
+    height: 44px;
+    gap: 6px;
+  }
+  .player-topbar .progress-text {
+    display: none;
+  }
+  /* PDF fills entire screen on mobile */
+  .pdf-viewer-wrap {
+    flex: 1 !important;
+  }
+  .pdf-viewer-wrap iframe {
+    margin-top: 0 !important;
+    height: 100% !important;
+  }
+  /* Video aspect ratio smaller on mobile */
+  .player-video {
+    max-height: 35vh;
+  }
+}
+/* On touch devices, always show PDF toolbar */
+@media (hover: none) {
+  .pdf-viewer-wrap iframe {
+    margin-top: 0 !important;
+    height: 100% !important;
+  }
+}
+
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
@@ -462,9 +563,6 @@ td {
   .page-header { margin-bottom: 18px; flex-direction: column; align-items: flex-start !important; gap: 12px; }
   .login-wrap { padding: 24px 16px !important; }
 
-  /* Learner module view */
-  iframe { min-height: 300px; }
-
   /* Tables scroll horizontally */
   .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px; }
   table { min-width: 600px; }
@@ -478,6 +576,9 @@ td {
 
   /* Test options full width */
   .test-option { padding: 14px !important; }
+
+  /* Test result card responsive */
+  .card { overflow-x: auto; }
 }
 
 @media (max-width: 480px) {
