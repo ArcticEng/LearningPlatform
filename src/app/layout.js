@@ -34,13 +34,13 @@ const themeScript = `
 `;
 
 export const metadata = {
-  title: "Learning Platform",
+  title: "Training Platform",
   description: "Online learning and assessment platform",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Learning Platform",
+    title: "Training Platform",
   },
   formatDetection: { telephone: false },
 };

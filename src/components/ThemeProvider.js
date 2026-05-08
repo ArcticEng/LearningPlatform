@@ -125,5 +125,27 @@ export default function ThemeProvider({ tenant }) {
     if (fontBody) document.body.style.fontFamily = `'${fontBody}', system-ui, sans-serif`;
   }, [tenant]);
 
+  // Set favicon to tenant logo
+  useEffect(() => {
+    if (!tenant?.logoUrl) return;
+    let link = document.querySelector("link[rel='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.href = tenant.logoUrl;
+    // Also set apple-touch-icon
+    let apple = document.querySelector("link[rel='apple-touch-icon']");
+    if (!apple) {
+      apple = document.createElement("link");
+      apple.rel = "apple-touch-icon";
+      document.head.appendChild(apple);
+    }
+    apple.href = tenant.logoUrl;
+    // Update page title
+    if (tenant.name) document.title = tenant.name;
+  }, [tenant]);
+
   return null;
 }
