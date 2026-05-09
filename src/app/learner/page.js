@@ -574,6 +574,91 @@ export default function LearnerPage() {
           </div>
         )}
 
+        {view === "my-bookings" && (
+          <div>
+            <h1 className="page-title">Bookings</h1>
+
+            {/* ── Upcoming bookings ── */}
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Your bookings</h2>
+            {myBookings.length === 0 ? (
+              <div className="card" style={{ textAlign: "center", padding: 32, color: "var(--text-muted)", marginBottom: 32 }}>
+                <p style={{ margin: 0, fontSize: 14 }}>You haven&apos;t booked any sessions yet. Pick an available slot below to get started.</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 }}>
+                {myBookings.map(bk => {
+                  const slot = bk.slot;
+                  if (!slot) return null;
+                  const dateStr = new Date(slot.date).toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+                  const course = courses.find(c => c.id === bk.courseId);
+                  return (
+                    <div key={bk.id} className="card" style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: 16, borderLeft: "4px solid var(--accent)" }}>
+                      <div style={{ background: "var(--accent-soft)", color: "var(--accent)", padding: 10, borderRadius: 8, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Icon name="calendar" size={22}/>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 15 }}>{slot.title || course?.title || "Booked session"}</div>
+                        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{dateStr}</div>
+                        {(slot.startTime || slot.endTime) && (
+                          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{slot.startTime}{slot.endTime ? ` – ${slot.endTime}` : ""}</div>
+                        )}
+                        {slot.location && (
+                          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>📍 {slot.location}</div>
+                        )}
+                      </div>
+                      <button className="btn btn-ghost" style={{ color: "var(--danger)", fontSize: 12, padding: "6px 10px", flexShrink: 0 }} onClick={() => cancelBooking(bk.id)}>
+                        Cancel
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── Available slots ── */}
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Available slots</h2>
+            {(() => {
+              // Hide slots the user is already booked into
+              const bookedSlotIds = new Set(myBookings.map(bk => bk.slotId));
+              const open = availableSlots.filter(s => !bookedSlotIds.has(s.id));
+              if (open.length === 0) {
+                return (
+                  <div className="card" style={{ textAlign: "center", padding: 32, color: "var(--text-muted)" }}>
+                    <p style={{ margin: 0, fontSize: 14 }}>No slots available right now. Check back soon — new dates are added regularly.</p>
+                  </div>
+                );
+              }
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {open.map(slot => {
+                    const dateStr = new Date(slot.date).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+                    const course = slot.courseId ? courses.find(c => c.id === slot.courseId) : null;
+                    const spots = slot.spotsLeft ?? (slot.capacity - slot.bookedCount);
+                    return (
+                      <div key={slot.id} className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 14 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14 }}>{slot.title || course?.title || "Training session"}</div>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                            <span>📅 {dateStr}</span>
+                            {(slot.startTime || slot.endTime) && <span>🕒 {slot.startTime}{slot.endTime ? `–${slot.endTime}` : ""}</span>}
+                            {slot.location && <span>📍 {slot.location}</span>}
+                          </div>
+                          <div style={{ fontSize: 11, color: spots <= 2 ? "var(--danger)" : "var(--text-muted)", marginTop: 4, fontWeight: 600 }}>
+                            {spots} spot{spots === 1 ? "" : "s"} left
+                          </div>
+                        </div>
+                        <button className="btn btn-primary btn-sm" style={{ fontSize: 12, padding: "8px 14px", flexShrink: 0 }} onClick={() => bookSlot(slot)}>
+                          Book
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
         {view === "my-results" && (
           <div>
             <h1 className="page-title">My Results</h1>
