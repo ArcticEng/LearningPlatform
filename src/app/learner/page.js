@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import ThemeToggle from "@/components/ThemeToggle";
 import ThemeProvider from "@/components/ThemeProvider";
 import Logo from "@/components/Logo";
+import BookingCalendar from "@/components/BookingCalendar";
 
 // react-pdf must be client-only — avoids SSR crashes from the worker
 const PDFViewer = dynamic(() => import("@/components/PDFViewer"), {
@@ -92,9 +93,59 @@ export default function LearnerPage() {
   }, []);
 
   const loadBookings = useCallback(async () => {
-    const b = await api.get("/api/bookings");
+    const [b, s] = await Promise.all([
+      api.get("/api/bookings"),
+      api.get("/api/booking-slots?future=true"),
+    ]);
     setMyBookings((b.bookings || []).filter(bk => bk.status === "confirmed"));
+    setAvailableSlots(s.slots || []);
   }, []);
+
+  const bookSlot = async (slot) => {
+    if (!user) return;
+    const res = await api.post("/api/bookings", {
+      slotId: slot.id,
+      studentName: user.name,
+      studentEmail: user.email,
+      studentPhone: user.phone || "",
+      courseId: slot.courseId || null,
+      userId: user.id,
+    });
+    if (res.error) { alert(res.error); return; }
+    await loadBookings();
+  };
+
+  const cancelBooking = async (bookingId) => {
+    if (!confirm("Cancel this booking? You can re-book another available slot afterwards.")) return;
+    const res = await fetch("/api/bookings", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: bookingId }),
+    }).then(r => r.json());
+    if (res.error) { alert(res.error); return; }
+    await loadBookings();
+  };
+
+  // Reschedule = book new first, then cancel old (so the learner is never
+  // momentarily un-booked if the new slot turns out to be full).
+  const rescheduleBooking = async (oldBookingId, newSlot) => {
+    if (!user || !oldBookingId || !newSlot) return;
+    const created = await api.post("/api/bookings", {
+      slotId: newSlot.id,
+      studentName: user.name,
+      studentEmail: user.email,
+      studentPhone: user.phone || "",
+      courseId: newSlot.courseId || null,
+      userId: user.id,
+    });
+    if (created.error) { alert(created.error); return; }
+    await fetch("/api/bookings", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: oldBookingId }),
+    });
+    await loadBookings();
+  };
 
   useEffect(() => {
     api.get("/api/auth").then(d => {
@@ -457,7 +508,7 @@ export default function LearnerPage() {
   // ══════════════════════════════════════
   const navItems = [
     { icon: "book", label: "My Courses", key: "my-courses" },
-    ...(tenant?.featureBookings && myBookings.length > 0 ? [{ icon: "calendar", label: "My Bookings", key: "my-bookings" }] : []),
+    ...(tenant?.featureBookings ? [{ icon: "calendar", label: "Bookings", key: "my-bookings" }] : []),
     { icon: "award", label: "My Results", key: "my-results" },
   ];
 
@@ -577,85 +628,16 @@ export default function LearnerPage() {
         {view === "my-bookings" && (
           <div>
             <h1 className="page-title">Bookings</h1>
-
-            {/* ── Upcoming bookings ── */}
-            <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Your bookings</h2>
-            {myBookings.length === 0 ? (
-              <div className="card" style={{ textAlign: "center", padding: 32, color: "var(--text-muted)", marginBottom: 32 }}>
-                <p style={{ margin: 0, fontSize: 14 }}>You haven&apos;t booked any sessions yet. Pick an available slot below to get started.</p>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 }}>
-                {myBookings.map(bk => {
-                  const slot = bk.slot;
-                  if (!slot) return null;
-                  const dateStr = new Date(slot.date).toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-                  const course = courses.find(c => c.id === bk.courseId);
-                  return (
-                    <div key={bk.id} className="card" style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: 16, borderLeft: "4px solid var(--accent)" }}>
-                      <div style={{ background: "var(--accent-soft)", color: "var(--accent)", padding: 10, borderRadius: 8, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <Icon name="calendar" size={22}/>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 15 }}>{slot.title || course?.title || "Booked session"}</div>
-                        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{dateStr}</div>
-                        {(slot.startTime || slot.endTime) && (
-                          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{slot.startTime}{slot.endTime ? ` – ${slot.endTime}` : ""}</div>
-                        )}
-                        {slot.location && (
-                          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>📍 {slot.location}</div>
-                        )}
-                      </div>
-                      <button className="btn btn-ghost" style={{ color: "var(--danger)", fontSize: 12, padding: "6px 10px", flexShrink: 0 }} onClick={() => cancelBooking(bk.id)}>
-                        Cancel
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* ── Available slots ── */}
-            <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 12px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Available slots</h2>
-            {(() => {
-              // Hide slots the user is already booked into
-              const bookedSlotIds = new Set(myBookings.map(bk => bk.slotId));
-              const open = availableSlots.filter(s => !bookedSlotIds.has(s.id));
-              if (open.length === 0) {
-                return (
-                  <div className="card" style={{ textAlign: "center", padding: 32, color: "var(--text-muted)" }}>
-                    <p style={{ margin: 0, fontSize: 14 }}>No slots available right now. Check back soon — new dates are added regularly.</p>
-                  </div>
-                );
-              }
-              return (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {open.map(slot => {
-                    const dateStr = new Date(slot.date).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-                    const course = slot.courseId ? courses.find(c => c.id === slot.courseId) : null;
-                    const spots = slot.spotsLeft ?? (slot.capacity - slot.bookedCount);
-                    return (
-                      <div key={slot.id} className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 14 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14 }}>{slot.title || course?.title || "Training session"}</div>
-                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                            <span>📅 {dateStr}</span>
-                            {(slot.startTime || slot.endTime) && <span>🕒 {slot.startTime}{slot.endTime ? `–${slot.endTime}` : ""}</span>}
-                            {slot.location && <span>📍 {slot.location}</span>}
-                          </div>
-                          <div style={{ fontSize: 11, color: spots <= 2 ? "var(--danger)" : "var(--text-muted)", marginTop: 4, fontWeight: 600 }}>
-                            {spots} spot{spots === 1 ? "" : "s"} left
-                          </div>
-                        </div>
-                        <button className="btn btn-primary btn-sm" style={{ fontSize: 12, padding: "8px 14px", flexShrink: 0 }} onClick={() => bookSlot(slot)}>
-                          Book
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
+            <div className="card" style={{ padding: "16px 16px 8px" }}>
+              <BookingCalendar
+                myBookings={myBookings}
+                availableSlots={availableSlots}
+                courses={courses}
+                onBook={bookSlot}
+                onCancel={cancelBooking}
+                onReschedule={rescheduleBooking}
+              />
+            </div>
           </div>
         )}
 
