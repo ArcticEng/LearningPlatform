@@ -1,0 +1,4 @@
+# Railway / Nixpacks build config
+# Adds ghostscript so PDF uploads can be compressed at /api/modules POST + PUT.
+[phases.setup]
+aptPkgs = ["ghostscript"]

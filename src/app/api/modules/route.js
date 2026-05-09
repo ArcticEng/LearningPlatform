@@ -5,6 +5,7 @@ import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
 import { v4 as uuid } from "uuid";
 import { logError } from "@/lib/logger";
+import { compressPdf } from "@/lib/pdfCompressor";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), "public", "uploads");
 
@@ -41,6 +42,13 @@ export async function POST(req) {
       const filepath = path.join(UPLOAD_DIR, filename);
       const buffer = Buffer.from(await pdf.arrayBuffer());
       await writeFile(filepath, buffer);
+      // Compress in place — silently no-ops if gs isn't installed locally
+      const result = await compressPdf(filepath);
+      if (result.compressed) {
+        console.log(`[modules] Compressed ${pdf.name}: ${(result.originalSize/1024).toFixed(0)}KB → ${(result.compressedSize/1024).toFixed(0)}KB (${(result.ratio*100).toFixed(0)}%)`);
+      } else if (result.reason && result.reason !== "ghostscript not available" && result.reason !== "no size benefit") {
+        console.warn(`[modules] PDF compression skipped: ${result.reason}`);
+      }
       pdfPath = `/api/files/${filename}`;
       pdfName = pdf.name;
     }
@@ -95,6 +103,12 @@ export async function PUT(req) {
       const filepath = path.join(UPLOAD_DIR, filename);
       const buffer = Buffer.from(await pdf.arrayBuffer());
       await writeFile(filepath, buffer);
+      const result = await compressPdf(filepath);
+      if (result.compressed) {
+        console.log(`[modules] Compressed ${pdf.name}: ${(result.originalSize/1024).toFixed(0)}KB → ${(result.compressedSize/1024).toFixed(0)}KB (${(result.ratio*100).toFixed(0)}%)`);
+      } else if (result.reason && result.reason !== "ghostscript not available" && result.reason !== "no size benefit") {
+        console.warn(`[modules] PDF compression skipped: ${result.reason}`);
+      }
       updateData.pdfPath = `/api/files/${filename}`;
       updateData.pdfName = pdf.name;
     }
