@@ -4,8 +4,16 @@ import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
-// Pin worker to a CDN matching the installed react-pdf version
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+// unpkg is more reliable than cdnjs for pdfjs-dist .mjs workers.
+// The version is pinned to whatever react-pdf brought in, so they always match.
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+// Memoised options object — react-pdf warns if you pass a new object on every render
+const PDF_OPTIONS = {
+  cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+  cMapPacked: true,
+  standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
+};
 
 export default function PDFViewer({ url, title }) {
   const [numPages, setNumPages] = useState(null);
@@ -13,12 +21,10 @@ export default function PDFViewer({ url, title }) {
   const [error, setError] = useState(null);
   const containerRef = useRef(null);
 
-  // Track container width so each page renders fitted to the available space
   useEffect(() => {
     if (!containerRef.current) return;
     const update = () => {
       if (containerRef.current) {
-        // Subtract a small gutter so pages don't touch the scrollbar / edges
         setContainerWidth(containerRef.current.clientWidth - 12);
       }
     };
@@ -38,9 +44,14 @@ export default function PDFViewer({ url, title }) {
   }, []);
 
   const onLoadError = useCallback((err) => {
-    console.error("PDF load error:", err);
-    setError(err?.message || "Failed to load PDF");
+    // Log the raw error so we can see it in DevTools, AND store the message for the UI
+    console.error("[PDFViewer] PDF load error:", err);
+    const msg = err?.message || err?.name || String(err) || "Unknown error";
+    setError(msg);
   }, []);
+
+  // Reset error if URL changes
+  useEffect(() => { setError(null); setNumPages(null); }, [url]);
 
   return (
     <div
@@ -59,8 +70,9 @@ export default function PDFViewer({ url, title }) {
       }}
     >
       {error ? (
-        <div style={{ color: "#fff", padding: 24, textAlign: "center", maxWidth: 320 }}>
-          <p style={{ margin: "0 0 12px", fontSize: 14 }}>Could not load PDF in viewer.</p>
+        <div style={{ color: "#fff", padding: 24, textAlign: "center", maxWidth: 480 }}>
+          <p style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 600 }}>Could not load PDF in viewer</p>
+          <p style={{ margin: "0 0 16px", fontSize: 12, opacity: 0.8, fontFamily: "monospace", wordBreak: "break-word" }}>{error}</p>
           <a href={url} target="_blank" rel="noopener noreferrer"
             style={{ color: "#fff", textDecoration: "underline", fontSize: 13 }}>
             Open in new tab
@@ -69,10 +81,10 @@ export default function PDFViewer({ url, title }) {
       ) : (
         <Document
           file={url}
+          options={PDF_OPTIONS}
           onLoadSuccess={onLoadSuccess}
           onLoadError={onLoadError}
           loading={<div style={{ color: "#fff", padding: 24, fontSize: 14 }}>Loading PDF…</div>}
-          error={<div style={{ color: "#fff", padding: 24, fontSize: 14 }}>Failed to load PDF.</div>}
         >
           {containerWidth > 0 && Array.from({ length: numPages || 0 }, (_, i) => (
             <div
