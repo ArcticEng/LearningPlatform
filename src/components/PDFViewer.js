@@ -4,9 +4,8 @@ import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
-// unpkg is more reliable than cdnjs for pdfjs-dist .mjs workers.
-// The version is pinned to whatever react-pdf brought in, so they always match.
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Self-hosted worker for fastest first-open (copied from pdfjs-dist on postinstall)
+pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 // Memoised options object — react-pdf warns if you pass a new object on every render
 const PDF_OPTIONS = {
