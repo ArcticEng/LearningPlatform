@@ -5,10 +5,17 @@ import { signToken, setSessionCookie } from "@/lib/auth";
 
 // POST /api/register - learner self-registration with access code
 export async function POST(req) {
-  const { name, idNumber, password, accessCode, tenantSlug } = await req.json();
+  const { name, idNumber, password, accessCode, tenantSlug, email, phone } = await req.json();
 
   if (!name || !idNumber || !password || !accessCode || !tenantSlug) {
     return NextResponse.json({ error: "All fields are required" }, { status: 400 });
+  }
+
+  // Validate email format if provided (optional for backward compat, but the
+  // registration form should make it required going forward)
+  const cleanEmail = (email || "").trim().toLowerCase();
+  if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
   }
 
   // Find tenant
@@ -45,6 +52,8 @@ export async function POST(req) {
     data: {
       name: name.trim(),
       idNumber: idNumber.trim(),
+      email: cleanEmail,
+      phone: (phone || "").trim(),
       password: hashed,
       role: "learner",
       tenantId: tenant.id,
@@ -69,7 +78,7 @@ export async function POST(req) {
   setSessionCookie(token, tenantSlug);
 
   return NextResponse.json({
-    user: { id: user.id, name: user.name, idNumber: user.idNumber, role: user.role, tenantId: user.tenantId },
+    user: { id: user.id, name: user.name, idNumber: user.idNumber, email: user.email, phone: user.phone, role: user.role, tenantId: user.tenantId },
     tenant,
   }, { status: 201 });
 }

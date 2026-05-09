@@ -44,7 +44,7 @@ async function findUserFromToken(token) {
   if (!payload) return null;
   return prisma.user.findUnique({
     where: { id: payload.id },
-    select: { id: true, name: true, idNumber: true, role: true, tenantId: true },
+    select: { id: true, name: true, idNumber: true, email: true, phone: true, role: true, tenantId: true },
   });
 }
 

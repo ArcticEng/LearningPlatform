@@ -13,6 +13,8 @@ export default function TenantLoginPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [tenant, setTenant] = useState(null);
@@ -53,8 +55,8 @@ export default function TenantLoginPage() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
-    if (!name || !idNumber || !password || !accessCode) {
-      setError("All fields are required");
+    if (!name || !idNumber || !password || !accessCode || !email) {
+      setError("Please fill in all required fields");
       return;
     }
     setLoading(true);
@@ -63,7 +65,7 @@ export default function TenantLoginPage() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, idNumber, password, accessCode, tenantSlug: slug }),
+        body: JSON.stringify({ name, idNumber, password, accessCode, tenantSlug: slug, email, phone }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -85,6 +87,8 @@ export default function TenantLoginPage() {
     setPassword("");
     setName("");
     setAccessCode("");
+    setEmail("");
+    setPhone("");
   };
 
   if (notFound) {
@@ -208,6 +212,15 @@ export default function TenantLoginPage() {
                 <div style={{ marginBottom: 14 }}>
                   <label className="label">ID Number</label>
                   <input className="input" value={idNumber} onChange={e => setIdNumber(e.target.value)} placeholder="Your ID number" autoComplete="username" />
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <label className="label">Email</label>
+                  <input className="input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Used for booking confirmations and updates</div>
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <label className="label">Phone <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(optional)</span></label>
+                  <input className="input" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 071 234 5678" autoComplete="tel" />
                 </div>
                 <div style={{ marginBottom: 24 }}>
                   <label className="label">Create Password</label>

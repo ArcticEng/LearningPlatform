@@ -35,7 +35,7 @@ export async function POST(req) {
     const token = signToken({ id: superadmin.id, role: superadmin.role });
     setSessionCookie(token, null); // superadmin cookie: lp_super
     return NextResponse.json({
-      user: { id: superadmin.id, name: superadmin.name, idNumber: superadmin.idNumber, role: superadmin.role, tenantId: null },
+      user: { id: superadmin.id, name: superadmin.name, idNumber: superadmin.idNumber, email: superadmin.email, phone: superadmin.phone, role: superadmin.role, tenantId: null },
     });
   }
 
@@ -70,7 +70,7 @@ export async function POST(req) {
   setSessionCookie(token, tenantSlug); // tenant-specific cookie: lp_act, lp_scarletrose, etc.
 
   return NextResponse.json({
-    user: { id: user.id, name: user.name, idNumber: user.idNumber, role: user.role, tenantId: user.tenantId },
+    user: { id: user.id, name: user.name, idNumber: user.idNumber, email: user.email, phone: user.phone, role: user.role, tenantId: user.tenantId },
     tenant,
   });
 }

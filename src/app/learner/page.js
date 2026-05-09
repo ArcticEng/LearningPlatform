@@ -66,6 +66,12 @@ export default function LearnerPage() {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [showReschedule, setShowReschedule] = useState(null);
   const [selectedNewSlot, setSelectedNewSlot] = useState(null);
+  // Pending booking action that's blocked on a missing email/phone profile prompt.
+  // Shape: { type: "book" | "reschedule", slot, oldBookingId? }
+  const [pendingBookingAction, setPendingBookingAction] = useState(null);
+  const [profileForm, setProfileForm] = useState({ email: "", phone: "" });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
   const [winW, setWinW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
 
   // Track viewport width so PDF zoom recalculates on resize / orientation change
@@ -103,6 +109,13 @@ export default function LearnerPage() {
 
   const bookSlot = async (slot) => {
     if (!user) return;
+    // No email on profile yet — collect it first, then resume booking
+    if (!user.email) {
+      setPendingBookingAction({ type: "book", slot });
+      setProfileForm({ email: "", phone: user.phone || "" });
+      setProfileError("");
+      return;
+    }
     const res = await api.post("/api/bookings", {
       slotId: slot.id,
       studentName: user.name,
@@ -130,6 +143,12 @@ export default function LearnerPage() {
   // momentarily un-booked if the new slot turns out to be full).
   const rescheduleBooking = async (oldBookingId, newSlot) => {
     if (!user || !oldBookingId || !newSlot) return;
+    if (!user.email) {
+      setPendingBookingAction({ type: "reschedule", slot: newSlot, oldBookingId });
+      setProfileForm({ email: "", phone: user.phone || "" });
+      setProfileError("");
+      return;
+    }
     const created = await api.post("/api/bookings", {
       slotId: newSlot.id,
       studentName: user.name,
@@ -145,6 +164,52 @@ export default function LearnerPage() {
       body: JSON.stringify({ id: oldBookingId }),
     });
     await loadBookings();
+  };
+
+  // Save profile email/phone, then resume the pending booking action with
+  // the freshly-saved details (no need to refetch session)
+  const saveProfileAndContinue = async () => {
+    setProfileError("");
+    const email = (profileForm.email || "").trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setProfileError("Please enter a valid email address");
+      return;
+    }
+    setProfileSaving(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, phone: profileForm.phone || "" }),
+      }).then(r => r.json());
+      if (res.error) { setProfileError(res.error); return; }
+      const updatedUser = res.user;
+      setUser(updatedUser);
+      const action = pendingBookingAction;
+      setPendingBookingAction(null);
+      if (!action) return;
+      // Now perform the booking using the just-saved details
+      const payload = {
+        slotId: action.slot.id,
+        studentName: updatedUser.name,
+        studentEmail: updatedUser.email,
+        studentPhone: updatedUser.phone || "",
+        courseId: action.slot.courseId || null,
+        userId: updatedUser.id,
+      };
+      const created = await api.post("/api/bookings", payload);
+      if (created.error) { alert(created.error); return; }
+      if (action.type === "reschedule" && action.oldBookingId) {
+        await fetch("/api/bookings", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: action.oldBookingId }),
+        });
+      }
+      await loadBookings();
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   useEffect(() => {
@@ -641,6 +706,82 @@ export default function LearnerPage() {
           </div>
         )}
 
+        {view === "profile" && (
+          <div>
+            <h1 className="page-title">Profile</h1>
+            <div className="card" style={{ maxWidth: 520, padding: 20 }}>
+              <h2 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700 }}>Your details</h2>
+
+              <div style={{ marginBottom: 14 }}>
+                <label className="label">Full name</label>
+                <input className="input" value={editForm.name}
+                  onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
+                  placeholder="Your full name" />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label className="label">Email</label>
+                <input className="input" type="email" value={editForm.email}
+                  onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))}
+                  placeholder="you@example.com" autoComplete="email" />
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Used for booking confirmations and updates</div>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label className="label">Phone <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(optional)</span></label>
+                <input className="input" type="tel" value={editForm.phone}
+                  onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))}
+                  placeholder="e.g. 071 234 5678" autoComplete="tel" />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label className="label">ID number</label>
+                <input className="input" value={user.idNumber || ""} disabled readOnly
+                  style={{ opacity: 0.7, cursor: "not-allowed" }} />
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Your ID number can&apos;t be changed. Contact admin if it&apos;s wrong.</div>
+              </div>
+
+              {/* Password change — collapsed by default */}
+              <details style={{ marginTop: 18, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+                <summary style={{ cursor: "pointer", fontWeight: 700, fontSize: 14, marginBottom: 12, color: "var(--text)" }}>Change password</summary>
+                <div style={{ marginBottom: 14 }}>
+                  <label className="label">Current password</label>
+                  <input className="input" type="password" value={editForm.currentPassword}
+                    onChange={e => setEditForm(p => ({ ...p, currentPassword: e.target.value }))}
+                    placeholder="Your current password" autoComplete="current-password" />
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <label className="label">New password</label>
+                  <input className="input" type="password" value={editForm.newPassword}
+                    onChange={e => setEditForm(p => ({ ...p, newPassword: e.target.value }))}
+                    placeholder="At least 6 characters" autoComplete="new-password" />
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <label className="label">Confirm new password</label>
+                  <input className="input" type="password" value={editForm.confirmPassword}
+                    onChange={e => setEditForm(p => ({ ...p, confirmPassword: e.target.value }))}
+                    placeholder="Re-enter new password" autoComplete="new-password" />
+                </div>
+              </details>
+
+              {editStatus.message && (
+                <div style={{
+                  marginTop: 12, fontSize: 13, padding: "10px 14px", borderRadius: 8,
+                  color: editStatus.type === "success" ? "var(--success)" : "var(--danger)",
+                  background: editStatus.type === "success" ? "var(--success-soft)" : "var(--danger-soft)",
+                }}>
+                  {editStatus.message}
+                </div>
+              )}
+
+              <button className="btn btn-primary" disabled={editSaving} onClick={saveProfileEdits}
+                style={{ marginTop: 18, width: "100%", justifyContent: "center", padding: "12px 20px" }}>
+                {editSaving ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </div>
+        )}
+
         {view === "my-results" && (
           <div>
             <h1 className="page-title">My Results</h1>
@@ -672,6 +813,42 @@ export default function LearnerPage() {
           </div>
         )}
       </div>
+
+      {/* Profile completion modal — fires when learner without email tries to book */}
+      {pendingBookingAction && (
+        <div onClick={() => setPendingBookingAction(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} className="card" style={{ maxWidth: 400, width: "100%", padding: 24 }}>
+            <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700 }}>Complete your details</h2>
+            <p style={{ margin: "0 0 18px", fontSize: 13, color: "var(--text-muted)" }}>
+              We need your email to send a booking confirmation. This is a one-time step.
+            </p>
+            <div style={{ marginBottom: 12 }}>
+              <label className="label">Email</label>
+              <input className="input" type="email" value={profileForm.email} autoFocus
+                onChange={e => setProfileForm(p => ({ ...p, email: e.target.value }))}
+                placeholder="you@example.com" autoComplete="email" />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label className="label">Phone <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(optional)</span></label>
+              <input className="input" type="tel" value={profileForm.phone}
+                onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))}
+                placeholder="e.g. 071 234 5678" autoComplete="tel" />
+            </div>
+            {profileError && (
+              <div style={{ color: "var(--danger)", fontSize: 13, marginBottom: 12, padding: "8px 12px", background: "var(--danger-soft)", borderRadius: 8 }}>
+                {profileError}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn btn-ghost" disabled={profileSaving} onClick={() => setPendingBookingAction(null)}>Cancel</button>
+              <button className="btn btn-primary" disabled={profileSaving} onClick={saveProfileAndContinue}>
+                {profileSaving ? "Saving…" : "Save & Book"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* WhatsApp floating button */}
       {tenant?.featureWhatsapp && tenant?.whatsappNumber && (
