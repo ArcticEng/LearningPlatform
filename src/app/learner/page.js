@@ -1,9 +1,20 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import ThemeToggle from "@/components/ThemeToggle";
 import ThemeProvider from "@/components/ThemeProvider";
 import Logo from "@/components/Logo";
+
+// react-pdf must be client-only — avoids SSR crashes from the worker
+const PDFViewer = dynamic(() => import("@/components/PDFViewer"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#525659", color: "#fff", fontSize: 14 }}>
+      Loading PDF…
+    </div>
+  ),
+});
 
 const api = {
   get: (url) => fetch(url).then(r => r.json()),
@@ -386,11 +397,10 @@ export default function LearnerPage() {
                     </div>
                   )}
 
-                  {/* PDF — fills ALL remaining vertical space */}
+                  {/* PDF — fills ALL remaining vertical space (PDF.js viewer, works on iOS Safari) */}
                   {currentModule.pdfPath && (
                     <div className="pdf-viewer-wrap" style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-                      <iframe key={`${currentModule.id}-${isMobile ? "m" : "d"}`} src={toPdfUrl(currentModule.pdfPath)} title={currentModule.pdfName}
-                        style={{ width: "100%", height: "100%", border: "none", background: "#fff", display: "block" }}/>
+                      <PDFViewer url={currentModule.pdfPath} title={currentModule.pdfName} />
                     </div>
                   )}
 
