@@ -35,6 +35,7 @@ function Icon({ name, size = 20 }) {
     menu: "M3 12h18M3 6h18M3 18h18",
     chevron: "M9 18l6-6-6-6",
     calendar: "M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM16 2v4M8 2v4M3 10h18",
+    user: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2",
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -42,6 +43,7 @@ function Icon({ name, size = 20 }) {
       {name === "out" && <><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>}
       {name === "file" && <polyline points="13 2 13 9 20 9"/>}
       {name === "clip" && <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>}
+      {name === "user" && <circle cx="12" cy="7" r="4"/>}
     </svg>
   );
 }
@@ -72,6 +74,10 @@ export default function LearnerPage() {
   const [profileForm, setProfileForm] = useState({ email: "", phone: "" });
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState("");
+  // Editable profile form (settings page) — separate from the booking-time prompt
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editStatus, setEditStatus] = useState({ type: "", message: "" });
   const [winW, setWinW] = useState(typeof window !== "undefined" ? window.innerWidth : 1024);
 
   // Track viewport width so PDF zoom recalculates on resize / orientation change
@@ -209,6 +215,71 @@ export default function LearnerPage() {
       await loadBookings();
     } finally {
       setProfileSaving(false);
+    }
+  };
+
+  // Sync edit form whenever user loads or changes
+  useEffect(() => {
+    if (user) {
+      setEditForm({
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    }
+  }, [user]);
+
+  const saveProfileEdits = async () => {
+    setEditStatus({ type: "", message: "" });
+    const wantsPasswordChange = !!editForm.newPassword;
+
+    if (editForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email)) {
+      setEditStatus({ type: "error", message: "Please enter a valid email address" });
+      return;
+    }
+    if (wantsPasswordChange) {
+      if (editForm.newPassword.length < 6) {
+        setEditStatus({ type: "error", message: "New password must be at least 6 characters" });
+        return;
+      }
+      if (editForm.newPassword !== editForm.confirmPassword) {
+        setEditStatus({ type: "error", message: "New password and confirmation do not match" });
+        return;
+      }
+      if (!editForm.currentPassword) {
+        setEditStatus({ type: "error", message: "Enter your current password to change it" });
+        return;
+      }
+    }
+
+    setEditSaving(true);
+    try {
+      const payload = {
+        name: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone,
+      };
+      if (wantsPasswordChange) {
+        payload.currentPassword = editForm.currentPassword;
+        payload.newPassword = editForm.newPassword;
+      }
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).then(r => r.json());
+      if (res.error) {
+        setEditStatus({ type: "error", message: res.error });
+        return;
+      }
+      setUser(res.user);
+      setEditForm(p => ({ ...p, currentPassword: "", newPassword: "", confirmPassword: "" }));
+      setEditStatus({ type: "success", message: wantsPasswordChange ? "Profile and password updated" : "Profile updated" });
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -575,6 +646,7 @@ export default function LearnerPage() {
     { icon: "book", label: "My Courses", key: "my-courses" },
     ...(tenant?.featureBookings ? [{ icon: "calendar", label: "Bookings", key: "my-bookings" }] : []),
     { icon: "award", label: "My Results", key: "my-results" },
+    { icon: "user", label: "Profile", key: "profile" },
   ];
 
   const Brand = (
