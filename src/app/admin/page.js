@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
 import ThemeProvider from "@/components/ThemeProvider";
 import Logo from "@/components/Logo";
+import AdminBookingCalendar from "@/components/AdminBookingCalendar";
 
 const api = {
   get: (url) => fetch(url).then(r => r.json()),
@@ -94,6 +95,7 @@ export default function AdminPage() {
   const [bookingSlots, setBookingSlots] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [showCreateSlot, setShowCreateSlot] = useState(false);
+  const [editingSlotId, setEditingSlotId] = useState(null); // when set, modal is in edit mode
   const [slotForm, setSlotForm] = useState({ title: "", date: "", startTime: "", endTime: "", location: "", capacity: 10, courseId: "" });
 
   // Forms
@@ -933,95 +935,78 @@ export default function AdminPage() {
             setBookingSlots(s.slots || []);
             setBookings(b.bookings || []);
           };
-          const createSlot = async () => {
+
+          // Open the create modal pre-filled with the date the admin clicked on the calendar
+          const openCreateOnDate = (dateYmd) => {
+            setEditingSlotId(null);
+            setSlotForm({ title: "", date: dateYmd, startTime: "", endTime: "", location: "", capacity: 10, courseId: "" });
+            setShowCreateSlot(true);
+          };
+
+          // Open the modal in edit mode
+          const openEditSlot = (slot) => {
+            setEditingSlotId(slot.id);
+            // Date in input[type=date] needs YYYY-MM-DD
+            const d = new Date(slot.date);
+            const dateYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+            setSlotForm({
+              title: slot.title || "",
+              date: dateYmd,
+              startTime: slot.startTime || "",
+              endTime: slot.endTime || "",
+              location: slot.location || "",
+              capacity: slot.capacity || 10,
+              courseId: slot.courseId || "",
+            });
+            setShowCreateSlot(true);
+          };
+
+          const saveSlot = async () => {
             if (!slotForm.date) return alert("Date is required");
-            await api.post("/api/booking-slots", slotForm);
+            if (editingSlotId) {
+              await api.put("/api/booking-slots", { id: editingSlotId, ...slotForm });
+            } else {
+              await api.post("/api/booking-slots", slotForm);
+            }
             setSlotForm({ title: "", date: "", startTime: "", endTime: "", location: "", capacity: 10, courseId: "" });
+            setEditingSlotId(null);
             setShowCreateSlot(false);
             reloadBookings();
           };
+
           const deleteSlot = async (id) => {
             if (!confirm("Delete this slot and all its bookings?")) return;
             await api.del("/api/booking-slots", { id });
             reloadBookings();
           };
+
           const cancelBooking = async (id) => {
             if (!confirm("Cancel this booking?")) return;
             await api.del("/api/bookings", { id });
             reloadBookings();
           };
 
-          // Group slots by month
-          const grouped = {};
-          bookingSlots.forEach(s => {
-            const key = new Date(s.date).toLocaleDateString("en-ZA", { month: "long", year: "numeric" });
-            if (!grouped[key]) grouped[key] = [];
-            grouped[key].push(s);
-          });
-
           return (
             <div>
               <div className="page-header">
                 <h1 className="page-title" style={{ margin: 0 }}>Bookings</h1>
-                <button className="btn btn-primary" onClick={() => setShowCreateSlot(true)}>
+                <button className="btn btn-primary" onClick={() => openCreateOnDate("")}>
                   <Icon name="plus" size={16}/> Add Date Slot
                 </button>
               </div>
 
-              {bookingSlots.length === 0 ? (
-                <div className="card" style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
-                  <p style={{ fontSize: 18, fontWeight: 600, color: "var(--text)" }}>No booking slots</p>
-                  <p>Create available dates for students to book in-person training.</p>
-                </div>
-              ) : (
-                Object.entries(grouped).map(([month, slots]) => (
-                  <div key={month} style={{ marginBottom: 24 }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>{month}</h3>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                      {slots.map(s => {
-                        const slotBookings = s.bookings || [];
-                        const dateStr = new Date(s.date).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
-                        const isFull = s.bookedCount >= s.capacity;
-                        return (
-                          <div key={s.id} className="card" style={{ padding: "16px 20px" }}>
-                            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                              <div style={{ flex: 1, minWidth: 200 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                                  <span style={{ fontSize: 16, fontWeight: 700 }}>{dateStr}</span>
-                                  {s.startTime && <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{s.startTime}{s.endTime ? ` – ${s.endTime}` : ""}</span>}
-                                </div>
-                                {s.title && <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{s.title}</div>}
-                                {s.location && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>📍 {s.location}</div>}
-                                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                                  <span className={`badge ${isFull ? "badge-danger" : "badge-success"}`}>{s.bookedCount}/{s.capacity} booked</span>
-                                  {isFull && <span className="badge badge-warn">Full</span>}
-                                </div>
-                              </div>
-                              <div style={{ display: "flex", gap: 6 }}>
-                                <button className="btn btn-sm btn-danger" onClick={() => deleteSlot(s.id)}><Icon name="trash" size={14}/></button>
-                              </div>
-                            </div>
-                            {/* Show bookings for this slot */}
-                            {slotBookings.length > 0 && (
-                              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Bookings ({slotBookings.length})</div>
-                                {slotBookings.map(b => (
-                                  <div key={b.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)", fontSize: 13, gap: 8 }}>
-                                    <span style={{ fontWeight: 600 }}>{b.studentName}</span>
-                                    <span style={{ color: "var(--text-muted)" }}>{b.studentEmail}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))
-              )}
+              <div className="card" style={{ padding: "16px 16px 8px", marginBottom: 16 }}>
+                <AdminBookingCalendar
+                  slots={bookingSlots}
+                  courses={courses}
+                  onCreateOnDate={openCreateOnDate}
+                  onEditSlot={openEditSlot}
+                  onDeleteSlot={deleteSlot}
+                  onCancelBooking={cancelBooking}
+                />
+              </div>
 
-              <Modal open={showCreateSlot} onClose={() => setShowCreateSlot(false)} title="Add Booking Slot">
+              <Modal open={showCreateSlot} onClose={() => { setShowCreateSlot(false); setEditingSlotId(null); }} title={editingSlotId ? "Edit Booking Slot" : "Add Booking Slot"}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div><label className="label">Date</label><input className="input" type="date" value={slotForm.date} onChange={e => setSlotForm(p => ({ ...p, date: e.target.value }))}/></div>
                   <div style={{ display: "flex", gap: 12 }}>
@@ -1038,7 +1023,9 @@ export default function AdminPage() {
                       {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                     </select>
                   </div>
-                  <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={createSlot}><Icon name="plus" size={16}/> Add Slot</button>
+                  <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={saveSlot}>
+                    <Icon name={editingSlotId ? "check" : "plus"} size={16}/> {editingSlotId ? "Save Changes" : "Add Slot"}
+                  </button>
                 </div>
               </Modal>
             </div>
