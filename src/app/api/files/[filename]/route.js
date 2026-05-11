@@ -24,11 +24,11 @@ export async function GET(req, { params }) {
     return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
   }
 
-  // Logo files are public (shown on login pages before auth)
-  const isLogo = filename.startsWith("logo-");
+  // Logo and course image files are public (shown on login/catalog pages before auth)
+  const isPublic = filename.startsWith("logo-") || filename.startsWith("course-img-");
 
   // All other files require authentication
-  if (!isLogo) {
+  if (!isPublic) {
     const user = await getSession();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

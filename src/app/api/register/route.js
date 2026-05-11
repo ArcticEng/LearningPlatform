@@ -62,9 +62,16 @@ export async function POST(req) {
 
   // Auto-assign course if the access code is tied to one
   if (code.courseId) {
-    await prisma.courseAccess.create({
-      data: { userId: user.id, courseId: code.courseId, tenantId: tenant.id },
-    }).catch(() => {}); // Ignore if already exists
+    // Check enrollment cap
+    const course = await prisma.course.findFirst({ where: { id: code.courseId } });
+    if (tenant.featureCourseCap && course?.maxEnrollment > 0 && course.enrolledCount >= course.maxEnrollment) {
+      // Don't block registration, just skip course assignment
+    } else {
+      await prisma.courseAccess.create({
+        data: { userId: user.id, courseId: code.courseId, tenantId: tenant.id },
+      }).catch(() => {});
+      await prisma.course.update({ where: { id: code.courseId }, data: { enrolledCount: { increment: 1 } } }).catch(() => {});
+    }
   }
 
   // Increment used count

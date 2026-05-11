@@ -19,6 +19,7 @@ export async function GET(req) {
       featureSelfRegister: true,
       featurePayments: true,
       featureBookings: true, bookingAdminEmail: true,
+      featureCourseCap: true,
     },
   });
 

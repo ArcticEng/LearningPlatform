@@ -28,6 +28,11 @@ export async function POST(req) {
   if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 });
   if (course.price <= 0) return NextResponse.json({ error: "This course is free" }, { status: 400 });
 
+  // Check enrollment cap
+  if (tenant.featureCourseCap && course.maxEnrollment > 0 && course.enrolledCount >= course.maxEnrollment) {
+    return NextResponse.json({ error: "This course is fully enrolled. No spots remaining." }, { status: 400 });
+  }
+
   const ref = `PAY-${uuid().slice(0, 8).toUpperCase()}`;
   const reqUrl = new URL(req.url);
   const baseUrl = `${reqUrl.protocol}//${reqUrl.host}`;
@@ -143,6 +148,9 @@ export async function GET(req) {
   await prisma.courseAccess.create({
     data: { userId: user.id, courseId: payment.courseId, tenantId: tenant.id },
   }).catch(() => {});
+
+  // Increment enrolled count
+  await prisma.course.update({ where: { id: payment.courseId }, data: { enrolledCount: { increment: 1 } } }).catch(() => {});
 
   // Create booking if a slot was selected
   const metadata = verifyData.data.metadata || {};

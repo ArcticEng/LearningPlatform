@@ -342,18 +342,6 @@ export default function LearnerPage() {
     return u;
   };
 
-  // Helper: append zoom params to PDF URL for narrow viewports.
-  // Uses both view=FitH and zoom=page-width — different mobile browsers
-  // honour different fragments. Chrome/Firefox respect these; iOS Safari
-  // tends to ignore them (use the "Open in full screen" link as fallback).
-  const toPdfUrl = (url) => {
-    if (!url) return "";
-    if (winW >= 768) return url;
-    // Strip any existing fragment, then append our params
-    const base = url.split("#")[0];
-    return `${base}#view=FitH&zoom=page-width&toolbar=0&navpanes=0`;
-  };
-
   if (!user) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "var(--text-muted)" }}>Loading…</div>;
 
   const theme = <ThemeProvider tenant={tenant} />;

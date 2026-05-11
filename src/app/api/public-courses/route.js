@@ -14,7 +14,8 @@ export async function GET(req) {
   const courses = await prisma.course.findMany({
     where: { tenantId: tenant.id, price: { gt: 0 } },
     select: {
-      id: true, title: true, description: true, price: true, currency: true,
+      id: true, title: true, description: true, imageUrl: true, price: true, currency: true,
+      maxEnrollment: true, enrolledCount: true,
       _count: { select: { modules: true } },
     },
     orderBy: { createdAt: "desc" },

@@ -100,33 +100,49 @@ export default function CourseCatalogPage() {
             </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20, marginBottom: 40 }}>
-              {courses.map(c => (
+              {courses.map(c => {
+                const isFull = c.maxEnrollment > 0 && c.enrolledCount >= c.maxEnrollment;
+                return (
                 <div key={c.id} className="card" style={{
-                  cursor: "pointer", transition: "border-color 0.2s, transform 0.2s",
+                  cursor: isFull ? "not-allowed" : "pointer", transition: "border-color 0.2s, transform 0.2s",
                   border: selectedCourse?.id === c.id ? "2px solid var(--accent)" : "1px solid var(--border)",
+                  opacity: isFull ? 0.6 : 1,
                 }}
                   onClick={() => {
+                    if (isFull) return;
                     setSelectedCourse(c); setError(""); setSelectedSlot(null);
-                    // Load booking slots if bookings enabled
                     if (tenant?.featureBookings) {
                       fetch(`/api/booking-slots?slug=${encodeURIComponent(slug)}&future=true&courseId=${c.id}`)
                         .then(r => r.json()).then(d => setAvailableSlots(d.slots || [])).catch(() => setAvailableSlots([]));
                     }
                   }}
-                  onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+                  onMouseEnter={e => !isFull && (e.currentTarget.style.transform = "translateY(-2px)")}
                   onMouseLeave={e => e.currentTarget.style.transform = "none"}>
+                  {c.imageUrl && (
+                    <div style={{ margin: "-24px -24px 16px", borderRadius: "12px 12px 0 0", overflow: "hidden" }}>
+                      <img src={c.imageUrl} alt="" style={{ width: "100%", height: 180, objectFit: "cover", display: "block" }} />
+                    </div>
+                  )}
                   <h3 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700 }}>{c.title}</h3>
                   <p style={{ color: "var(--text-muted)", fontSize: 14, margin: "0 0 16px", minHeight: 40 }}>
                     {c.description || "No description"}
                   </p>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                     <span style={{ fontSize: 24, fontWeight: 800, color: "var(--accent)" }}>
                       {formatPrice(c.price, c.currency)}
                     </span>
-                    <span className="badge badge-accent">{c._count.modules} modules</span>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <span className="badge badge-accent">{c._count.modules} modules</span>
+                      {c.maxEnrollment > 0 && (
+                        isFull
+                          ? <span className="badge badge-danger">Fully Enrolled</span>
+                          : <span className="badge badge-success">{c.maxEnrollment - c.enrolledCount} spot{c.maxEnrollment - c.enrolledCount !== 1 ? "s" : ""} left</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

@@ -100,7 +100,8 @@ export default function AdminPage() {
 
   // Forms
   const [learnerForm, setLearnerForm] = useState({ name: "", idNumber: "", password: "" });
-  const [courseForm, setCourseForm] = useState({ title: "", description: "", price: "" });
+  const [courseForm, setCourseForm] = useState({ title: "", description: "", price: "", maxEnrollment: "" });
+  const [courseImage, setCourseImage] = useState(null);
   const [moduleForm, setModuleForm] = useState({ title: "", pdf: null, pdfName: "", videoUrl: "" });
   const [testModule, setTestModule] = useState(null);
   const [testForm, setTestForm] = useState({ questions: [{ question: "", options: ["", "", "", ""], correct: 0 }] });
@@ -316,8 +317,16 @@ export default function AdminPage() {
   const addCourse = async () => {
     if (!courseForm.title) return;
     const priceInCents = courseForm.price ? Math.round(parseFloat(courseForm.price) * 100) : 0;
-    await api.post("/api/courses", { ...courseForm, price: priceInCents });
-    setCourseForm({ title: "", description: "", price: "" });
+    const maxEnroll = courseForm.maxEnrollment ? parseInt(courseForm.maxEnrollment) : 0;
+    const res = await api.post("/api/courses", { ...courseForm, price: priceInCents, maxEnrollment: maxEnroll });
+    if (courseImage && res.course?.id) {
+      const fd = new FormData();
+      fd.append("image", courseImage);
+      fd.append("courseId", res.course.id);
+      await fetch("/api/courses/upload-image", { method: "POST", body: fd });
+    }
+    setCourseForm({ title: "", description: "", price: "", maxEnrollment: "" });
+    setCourseImage(null);
     setShowAddCourse(false);
     loadData();
   };
@@ -325,8 +334,16 @@ export default function AdminPage() {
   const updateCourse = async () => {
     if (!showEditCourse || !courseForm.title) return;
     const priceInCents = courseForm.price ? Math.round(parseFloat(courseForm.price) * 100) : 0;
-    await api.put("/api/courses", { id: showEditCourse.id, ...courseForm, price: priceInCents });
-    setCourseForm({ title: "", description: "", price: "" });
+    const maxEnroll = courseForm.maxEnrollment ? parseInt(courseForm.maxEnrollment) : 0;
+    await api.put("/api/courses", { id: showEditCourse.id, ...courseForm, price: priceInCents, maxEnrollment: maxEnroll });
+    if (courseImage) {
+      const fd = new FormData();
+      fd.append("image", courseImage);
+      fd.append("courseId", showEditCourse.id);
+      await fetch("/api/courses/upload-image", { method: "POST", body: fd });
+    }
+    setCourseForm({ title: "", description: "", price: "", maxEnrollment: "" });
+    setCourseImage(null);
     setShowEditCourse(null);
     loadData();
   };
@@ -653,15 +670,25 @@ export default function AdminPage() {
                     onClick={() => setSelectedCourse(c)}
                     onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent)"}
                     onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
+                    {c.imageUrl && (
+                      <div style={{ margin: "-16px -16px 12px", borderRadius: "12px 12px 0 0", overflow: "hidden" }}>
+                        <img src={c.imageUrl} alt="" style={{ width: "100%", height: 140, objectFit: "cover", display: "block" }} />
+                      </div>
+                    )}
                     <h3 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700 }}>{c.title}</h3>
                     <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "0 0 16px", flex: 1 }}>{c.description || "No description"}</p>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
                       <span className="badge badge-accent">{c.modules.length} modules</span>
                       {tenant?.featurePayments && c.price > 0 && <span className="badge badge-success">R {(c.price / 100).toFixed(2)}</span>}
                       {tenant?.featurePayments && (!c.price || c.price === 0) && <span className="badge" style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>Free</span>}
+                      {tenant?.featureCourseCap && c.maxEnrollment > 0 && (
+                        <span className={`badge ${c.enrolledCount >= c.maxEnrollment ? "badge-danger" : "badge-accent"}`}>
+                          {c.enrolledCount}/{c.maxEnrollment} enrolled
+                        </span>
+                      )}
                     </div>
                     <div style={{ display: "flex", gap: 6, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                      <button className="btn btn-sm btn-secondary" style={{ flex: 1, justifyContent: "center" }} onClick={e => { e.stopPropagation(); setCourseForm({ title: c.title, description: c.description, price: c.price ? (c.price / 100).toFixed(2) : "" }); setShowEditCourse(c); }}><Icon name="edit" size={14}/> Edit</button>
+                      <button className="btn btn-sm btn-secondary" style={{ flex: 1, justifyContent: "center" }} onClick={e => { e.stopPropagation(); setCourseForm({ title: c.title, description: c.description, price: c.price ? (c.price / 100).toFixed(2) : "", maxEnrollment: c.maxEnrollment || "" }); setShowEditCourse(c); }}><Icon name="edit" size={14}/> Edit</button>
                       {tenant?.featureCourseAccess && <button className="btn btn-sm" style={{ flex: 1, justifyContent: "center", background: "var(--accent-soft)", color: "var(--accent)" }} onClick={e => { e.stopPropagation(); openCourseAccess(c); }}><Icon name="users" size={14}/> Access</button>}
                       <button className="btn btn-sm btn-danger" onClick={e => { e.stopPropagation(); deleteCourse(c.id); }}><Icon name="trash" size={14}/></button>
                     </div>
@@ -680,11 +707,21 @@ export default function AdminPage() {
                     <input className="input" type="number" min="0" step="0.01" value={courseForm.price} onChange={e => setCourseForm(p => ({ ...p, price: e.target.value }))} placeholder="e.g. 500.00" />
                   </div>
                 )}
+                {tenant?.featureCourseCap && (
+                  <div>
+                    <label className="label">Max Enrollment (0 or blank = unlimited)</label>
+                    <input className="input" type="number" min="0" value={courseForm.maxEnrollment} onChange={e => setCourseForm(p => ({ ...p, maxEnrollment: e.target.value }))} placeholder="e.g. 20" />
+                  </div>
+                )}
+                <div>
+                  <label className="label">Course Image (optional)</label>
+                  <input className="input" type="file" accept="image/*" onChange={e => setCourseImage(e.target.files?.[0] || null)} style={{ padding: 8 }} />
+                </div>
                 <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={addCourse}><Icon name="plus" size={16}/> Create Course</button>
               </div>
             </Modal>
 
-            <Modal open={!!showEditCourse} onClose={() => { setShowEditCourse(null); setCourseForm({ title: "", description: "", price: "" }); }} title="Edit Course">
+            <Modal open={!!showEditCourse} onClose={() => { setShowEditCourse(null); setCourseForm({ title: "", description: "", price: "", maxEnrollment: "" }); }} title="Edit Course">
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <div><label className="label">Course Title</label><input className="input" value={courseForm.title} onChange={e => setCourseForm(p => ({ ...p, title: e.target.value }))}/></div>
                 <div><label className="label">Description</label><textarea className="input" style={{ minHeight: 80 }} value={courseForm.description} onChange={e => setCourseForm(p => ({ ...p, description: e.target.value }))}/></div>
@@ -694,6 +731,24 @@ export default function AdminPage() {
                     <input className="input" type="number" min="0" step="0.01" value={courseForm.price} onChange={e => setCourseForm(p => ({ ...p, price: e.target.value }))} placeholder="e.g. 500.00" />
                   </div>
                 )}
+                {tenant?.featureCourseCap && (
+                  <div>
+                    <label className="label">Max Enrollment (0 or blank = unlimited)</label>
+                    <input className="input" type="number" min="0" value={courseForm.maxEnrollment} onChange={e => setCourseForm(p => ({ ...p, maxEnrollment: e.target.value }))} placeholder="e.g. 20" />
+                    {showEditCourse && showEditCourse.enrolledCount > 0 && (
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>Currently enrolled: {showEditCourse.enrolledCount}</div>
+                    )}
+                  </div>
+                )}
+                <div>
+                  <label className="label">Course Image</label>
+                  {showEditCourse?.imageUrl && (
+                    <div style={{ marginBottom: 8, borderRadius: 8, overflow: "hidden" }}>
+                      <img src={showEditCourse.imageUrl} alt="" style={{ width: "100%", maxHeight: 160, objectFit: "cover", display: "block" }} />
+                    </div>
+                  )}
+                  <input className="input" type="file" accept="image/*" onChange={e => setCourseImage(e.target.files?.[0] || null)} style={{ padding: 8 }} />
+                </div>
                 <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={updateCourse}><Icon name="check" size={16}/> Save Changes</button>
               </div>
             </Modal>

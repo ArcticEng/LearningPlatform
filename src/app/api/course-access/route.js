@@ -44,10 +44,18 @@ export async function POST(req) {
   const course = await prisma.course.findFirst({ where: { id: courseId, tenantId: user.tenantId } });
   if (!learner || !course) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Check enrollment cap
+  const tenant = await prisma.tenant.findUnique({ where: { id: user.tenantId } });
+  if (tenant?.featureCourseCap && course.maxEnrollment > 0 && course.enrolledCount >= course.maxEnrollment) {
+    return NextResponse.json({ error: `Course is full (${course.maxEnrollment} max)` }, { status: 400 });
+  }
+
   try {
     const access = await prisma.courseAccess.create({
       data: { userId, courseId, tenantId: user.tenantId },
     });
+    // Increment enrolled count
+    await prisma.course.update({ where: { id: courseId }, data: { enrolledCount: { increment: 1 } } });
     return NextResponse.json({ access }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Already assigned" }, { status: 409 });
@@ -66,5 +74,7 @@ export async function DELETE(req) {
   if (!access) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.courseAccess.delete({ where: { id } });
+  // Decrement enrolled count
+  await prisma.course.update({ where: { id: access.courseId }, data: { enrolledCount: { decrement: 1 } } }).catch(() => {});
   return NextResponse.json({ ok: true });
 }

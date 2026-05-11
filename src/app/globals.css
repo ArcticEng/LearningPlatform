@@ -429,14 +429,10 @@ td {
 }
 
 /* ─── PDF Viewer ─── */
-.pdf-viewer-wrap iframe {
-  margin-top: -40px;
-  height: calc(100% + 40px) !important;
-  transition: margin-top 0.25s ease, height 0.25s ease;
-}
-.pdf-viewer-wrap:hover iframe {
-  margin-top: 0;
-  height: 100% !important;
+.pdf-viewer-wrap {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
 }
 
 /* ─── Course Player Mobile ─── */
@@ -518,14 +514,6 @@ td {
   }
   .player-topbar .progress-text {
     display: none;
-  }
-  /* PDF fills entire screen on mobile */
-  .pdf-viewer-wrap {
-    flex: 1 !important;
-  }
-  .pdf-viewer-wrap iframe {
-    margin-top: 0 !important;
-    height: 100% !important;
   }
   /* Video aspect ratio smaller on mobile */
   .player-video {
