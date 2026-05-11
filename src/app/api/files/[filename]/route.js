@@ -44,7 +44,7 @@ export async function GET(req, { params }) {
       headers: {
         "Content-Type": contentType,
         "Content-Disposition": "inline",
-        "Cache-Control": isLogo ? "public, max-age=86400" : "private, max-age=3600",
+        "Cache-Control": isPublic ? "public, max-age=86400" : "private, max-age=3600",
       },
     });
   } catch {
