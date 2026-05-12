@@ -73,6 +73,7 @@ const defaultTenantForm = {
   featurePayments: false, paystackSubaccount: "", platformFeePercent: 10,
   featureBookings: false, bookingAdminEmail: "",
   featureCourseCap: false,
+  featureWorkbooks: false,
 };
 
 export default function SuperAdminPage() {
@@ -196,6 +197,7 @@ export default function SuperAdminPage() {
       featureBookings: t.featureBookings || false,
       bookingAdminEmail: t.bookingAdminEmail || "",
       featureCourseCap: t.featureCourseCap || false,
+      featureWorkbooks: t.featureWorkbooks || false,
     });
     setShowEdit(t);
   };
@@ -416,6 +418,7 @@ export default function SuperAdminPage() {
               ["featurePayments", "Course Payments", "Students can purchase courses via Paystack (credit card, EFT, etc.)"],
               ["featureBookings", "Booking Calendar", "Students can book in-person training dates. Confirmation emails sent automatically."],
               ["featureCourseCap", "Course Enrollment Cap", "Limit maximum number of students who can enroll in each course"],
+              ["featureWorkbooks", "Practical Workbooks", "Interactive workbooks where learners fill in answers and submit for review (ACT)"],
             ].map(([key, label, desc]) => (
               <div key={key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
                 <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, flexShrink: 0 }}>

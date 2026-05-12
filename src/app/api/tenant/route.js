@@ -20,6 +20,7 @@ export async function GET(req) {
       featurePayments: true,
       featureBookings: true, bookingAdminEmail: true,
       featureCourseCap: true,
+      featureWorkbooks: true,
     },
   });
 

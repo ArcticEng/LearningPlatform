@@ -34,6 +34,7 @@ model Tenant {
   featurePayments    Boolean @default(false)  // Paystack payment for course access
   featureBookings    Boolean @default(false)  // booking calendar for in-person training
   featureCourseCap   Boolean @default(false)  // limit enrollment per course
+  featureWorkbooks   Boolean @default(false)  // practical skills workbooks (ACT)
   bookingAdminEmail  String  @default("")     // email to receive booking notifications
   paystackSubaccount String  @default("")     // Paystack subaccount code (ACCT_xxx)
   platformFeePercent Int     @default(10)      // % Onyx Digital takes per transaction
@@ -245,4 +246,34 @@ model Booking {
   createdAt     DateTime    @default(now())
 
   @@unique([slotId, studentEmail])
+}
+
+model Workbook {
+  id          String   @id @default(uuid())
+  moduleId    String   @unique                // one workbook per module
+  tenantId    String
+  title       String   @default("")
+  sections    String   @default("[]")          // JSON: array of section objects
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  submissions WorkbookSubmission[]
+}
+
+model WorkbookSubmission {
+  id          String    @id @default(uuid())
+  workbookId  String
+  workbook    Workbook  @relation(fields: [workbookId], references: [id], onDelete: Cascade)
+  userId      String
+  tenantId    String
+  answers     String    @default("{}")          // JSON: { fieldId: value }
+  status      String    @default("draft")       // draft | submitted | reviewed | returned
+  feedback    String    @default("")            // facilitator feedback
+  score       String    @default("")            // e.g. "22/28"
+  submittedAt DateTime?
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([workbookId, userId])
 }
