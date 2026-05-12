@@ -178,6 +178,7 @@ export default function CourseCatalogPage() {
                     {/* Badges */}
                     <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
                       <span className="badge badge-accent">{c._count.modules} MODULES</span>
+                      {c.isBundle && <span className="badge" style={{ background: "#8b5cf640", color: "#8b5cf6", fontWeight: 700 }}>📦 BUNDLE</span>}
                       {c.maxEnrollment > 0 && !isFull && (
                         <span className="badge badge-success">{c.maxEnrollment - c.enrolledCount} SPOT{c.maxEnrollment - c.enrolledCount !== 1 ? "S" : ""} LEFT</span>
                       )}

@@ -76,6 +76,8 @@ model Course {
   currency    String   @default("ZAR")
   maxEnrollment Int    @default(0)           // 0 = unlimited, >0 = cap
   enrolledCount Int    @default(0)           // current enrollment count
+  isBundle      Boolean @default(false)      // true = this is a bundle of other courses
+  bundleCourseIds String @default("")        // comma-separated course IDs included in bundle
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())

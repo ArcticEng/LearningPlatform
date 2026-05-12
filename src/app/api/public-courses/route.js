@@ -15,7 +15,7 @@ export async function GET(req) {
     where: { tenantId: tenant.id, price: { gt: 0 } },
     select: {
       id: true, title: true, description: true, imageUrl: true, promoLabel: true, price: true, currency: true,
-      maxEnrollment: true, enrolledCount: true,
+      maxEnrollment: true, enrolledCount: true, isBundle: true, bundleCourseIds: true,
       _count: { select: { modules: true } },
     },
     orderBy: { createdAt: "desc" },

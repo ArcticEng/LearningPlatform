@@ -100,7 +100,7 @@ export default function AdminPage() {
 
   // Forms
   const [learnerForm, setLearnerForm] = useState({ name: "", idNumber: "", password: "" });
-  const [courseForm, setCourseForm] = useState({ title: "", description: "", price: "", maxEnrollment: "", promoLabel: "" });
+  const [courseForm, setCourseForm] = useState({ title: "", description: "", price: "", maxEnrollment: "", promoLabel: "", isBundle: false, bundleCourseIds: "" });
   const [courseImage, setCourseImage] = useState(null);
   const [moduleForm, setModuleForm] = useState({ title: "", pdf: null, pdfName: "", videoUrl: "" });
   const [testModule, setTestModule] = useState(null);
@@ -325,7 +325,7 @@ export default function AdminPage() {
       fd.append("courseId", res.course.id);
       await fetch("/api/courses/upload-image", { method: "POST", body: fd });
     }
-    setCourseForm({ title: "", description: "", price: "", maxEnrollment: "", promoLabel: "" });
+    setCourseForm({ title: "", description: "", price: "", maxEnrollment: "", promoLabel: "", isBundle: false, bundleCourseIds: "" });
     setCourseImage(null);
     setShowAddCourse(false);
     loadData();
@@ -342,7 +342,7 @@ export default function AdminPage() {
       fd.append("courseId", showEditCourse.id);
       await fetch("/api/courses/upload-image", { method: "POST", body: fd });
     }
-    setCourseForm({ title: "", description: "", price: "", maxEnrollment: "", promoLabel: "" });
+    setCourseForm({ title: "", description: "", price: "", maxEnrollment: "", promoLabel: "", isBundle: false, bundleCourseIds: "" });
     setCourseImage(null);
     setShowEditCourse(null);
     loadData();
@@ -679,6 +679,7 @@ export default function AdminPage() {
                     <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "0 0 16px", flex: 1 }}>{c.description || "No description"}</p>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
                       <span className="badge badge-accent">{c.modules.length} modules</span>
+                      {c.isBundle && <span className="badge" style={{ background: "#8b5cf640", color: "#8b5cf6" }}>📦 Bundle</span>}
                       {tenant?.featurePayments && c.price > 0 && <span className="badge badge-success">R {(c.price / 100).toFixed(2)}</span>}
                       {tenant?.featurePayments && (!c.price || c.price === 0) && <span className="badge" style={{ background: "var(--surface-alt)", color: "var(--text-muted)" }}>Free</span>}
                       {tenant?.featureCourseCap && c.maxEnrollment > 0 && (
@@ -688,7 +689,7 @@ export default function AdminPage() {
                       )}
                     </div>
                     <div style={{ display: "flex", gap: 6, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                      <button className="btn btn-sm btn-secondary" style={{ flex: 1, justifyContent: "center" }} onClick={e => { e.stopPropagation(); setCourseForm({ title: c.title, description: c.description, price: c.price ? (c.price / 100).toFixed(2) : "", maxEnrollment: c.maxEnrollment || "", promoLabel: c.promoLabel || "" }); setShowEditCourse(c); }}><Icon name="edit" size={14}/> Edit</button>
+                      <button className="btn btn-sm btn-secondary" style={{ flex: 1, justifyContent: "center" }} onClick={e => { e.stopPropagation(); setCourseForm({ title: c.title, description: c.description, price: c.price ? (c.price / 100).toFixed(2) : "", maxEnrollment: c.maxEnrollment || "", promoLabel: c.promoLabel || "", isBundle: c.isBundle || false, bundleCourseIds: c.bundleCourseIds || "" }); setShowEditCourse(c); }}><Icon name="edit" size={14}/> Edit</button>
                       {tenant?.featureCourseAccess && <button className="btn btn-sm" style={{ flex: 1, justifyContent: "center", background: "var(--accent-soft)", color: "var(--accent)" }} onClick={e => { e.stopPropagation(); openCourseAccess(c); }}><Icon name="users" size={14}/> Access</button>}
                       <button className="btn btn-sm btn-danger" onClick={e => { e.stopPropagation(); deleteCourse(c.id); }}><Icon name="trash" size={14}/></button>
                     </div>
@@ -722,11 +723,37 @@ export default function AdminPage() {
                   <input className="input" value={courseForm.promoLabel} onChange={e => setCourseForm(p => ({ ...p, promoLabel: e.target.value }))} placeholder='e.g. Early bird price! Price increases soon.' />
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Shows as a badge on the course card. Leave blank for no promo.</div>
                 </div>
+                {tenant?.featurePayments && (
+                  <div>
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "8px 0" }}>
+                      <input type="checkbox" checked={courseForm.isBundle} onChange={e => setCourseForm(p => ({ ...p, isBundle: e.target.checked }))} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                      <span className="label" style={{ margin: 0 }}>This is a course bundle</span>
+                    </label>
+                    {courseForm.isBundle && (
+                      <div style={{ padding: 12, background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)", maxHeight: 200, overflowY: "auto" }}>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>Select courses included in this bundle. Students who purchase the bundle get access to all selected courses.</div>
+                        {courses.filter(c => c.id !== showEditCourse?.id).map(c => {
+                          const ids = courseForm.bundleCourseIds ? courseForm.bundleCourseIds.split(",").map(s => s.trim()) : [];
+                          const checked = ids.includes(c.id);
+                          return (
+                            <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: checked ? "var(--accent-soft)" : "transparent" }}>
+                              <input type="checkbox" checked={checked} onChange={e => {
+                                const next = e.target.checked ? [...ids, c.id] : ids.filter(i => i !== c.id);
+                                setCourseForm(p => ({ ...p, bundleCourseIds: next.join(",") }));
+                              }} style={{ width: 16, height: 16, accentColor: "var(--accent)" }} />
+                              <span style={{ fontSize: 13, fontWeight: 600 }}>{c.title}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={addCourse}><Icon name="plus" size={16}/> Create Course</button>
               </div>
             </Modal>
 
-            <Modal open={!!showEditCourse} onClose={() => { setShowEditCourse(null); setCourseForm({ title: "", description: "", price: "", maxEnrollment: "", promoLabel: "" }); }} title="Edit Course">
+            <Modal open={!!showEditCourse} onClose={() => { setShowEditCourse(null); setCourseForm({ title: "", description: "", price: "", maxEnrollment: "", promoLabel: "", isBundle: false, bundleCourseIds: "" }); }} title="Edit Course">
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <div><label className="label">Course Title</label><input className="input" value={courseForm.title} onChange={e => setCourseForm(p => ({ ...p, title: e.target.value }))}/></div>
                 <div><label className="label">Description</label><textarea className="input" style={{ minHeight: 80 }} value={courseForm.description} onChange={e => setCourseForm(p => ({ ...p, description: e.target.value }))}/></div>
@@ -759,6 +786,32 @@ export default function AdminPage() {
                   <input className="input" value={courseForm.promoLabel} onChange={e => setCourseForm(p => ({ ...p, promoLabel: e.target.value }))} placeholder='e.g. Early bird price! Price increases soon.' />
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Shows as a badge on the course card. Leave blank for no promo.</div>
                 </div>
+                {tenant?.featurePayments && (
+                  <div>
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "8px 0" }}>
+                      <input type="checkbox" checked={courseForm.isBundle} onChange={e => setCourseForm(p => ({ ...p, isBundle: e.target.checked }))} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                      <span className="label" style={{ margin: 0 }}>This is a course bundle</span>
+                    </label>
+                    {courseForm.isBundle && (
+                      <div style={{ padding: 12, background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)", maxHeight: 200, overflowY: "auto" }}>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>Select courses included in this bundle.</div>
+                        {courses.filter(c => c.id !== showEditCourse?.id).map(c => {
+                          const ids = courseForm.bundleCourseIds ? courseForm.bundleCourseIds.split(",").map(s => s.trim()) : [];
+                          const checked = ids.includes(c.id);
+                          return (
+                            <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: checked ? "var(--accent-soft)" : "transparent" }}>
+                              <input type="checkbox" checked={checked} onChange={e => {
+                                const next = e.target.checked ? [...ids, c.id] : ids.filter(i => i !== c.id);
+                                setCourseForm(p => ({ ...p, bundleCourseIds: next.join(",") }));
+                              }} style={{ width: 16, height: 16, accentColor: "var(--accent)" }} />
+                              <span style={{ fontSize: 13, fontWeight: 600 }}>{c.title}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={updateCourse}><Icon name="check" size={16}/> Save Changes</button>
               </div>
             </Modal>

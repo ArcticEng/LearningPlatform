@@ -149,6 +149,18 @@ export async function GET(req) {
     data: { userId: user.id, courseId: payment.courseId, tenantId: tenant.id },
   }).catch(() => {});
 
+  // If this is a bundle, also grant access to all included courses
+  const purchasedCourse = await prisma.course.findUnique({ where: { id: payment.courseId } });
+  if (purchasedCourse?.isBundle && purchasedCourse.bundleCourseIds) {
+    const bundleIds = purchasedCourse.bundleCourseIds.split(",").map(id => id.trim()).filter(Boolean);
+    for (const cid of bundleIds) {
+      await prisma.courseAccess.create({
+        data: { userId: user.id, courseId: cid, tenantId: tenant.id },
+      }).catch(() => {});
+      await prisma.course.update({ where: { id: cid }, data: { enrolledCount: { increment: 1 } } }).catch(() => {});
+    }
+  }
+
   // Increment enrolled count
   await prisma.course.update({ where: { id: payment.courseId }, data: { enrolledCount: { increment: 1 } } }).catch(() => {});
 
