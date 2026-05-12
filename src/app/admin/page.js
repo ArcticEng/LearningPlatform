@@ -100,7 +100,7 @@ export default function AdminPage() {
 
   // Forms
   const [learnerForm, setLearnerForm] = useState({ name: "", idNumber: "", password: "" });
-  const [courseForm, setCourseForm] = useState({ title: "", description: "", price: "", maxEnrollment: "" });
+  const [courseForm, setCourseForm] = useState({ title: "", description: "", price: "", maxEnrollment: "", promoLabel: "" });
   const [courseImage, setCourseImage] = useState(null);
   const [moduleForm, setModuleForm] = useState({ title: "", pdf: null, pdfName: "", videoUrl: "" });
   const [testModule, setTestModule] = useState(null);
@@ -325,7 +325,7 @@ export default function AdminPage() {
       fd.append("courseId", res.course.id);
       await fetch("/api/courses/upload-image", { method: "POST", body: fd });
     }
-    setCourseForm({ title: "", description: "", price: "", maxEnrollment: "" });
+    setCourseForm({ title: "", description: "", price: "", maxEnrollment: "", promoLabel: "" });
     setCourseImage(null);
     setShowAddCourse(false);
     loadData();
@@ -342,7 +342,7 @@ export default function AdminPage() {
       fd.append("courseId", showEditCourse.id);
       await fetch("/api/courses/upload-image", { method: "POST", body: fd });
     }
-    setCourseForm({ title: "", description: "", price: "", maxEnrollment: "" });
+    setCourseForm({ title: "", description: "", price: "", maxEnrollment: "", promoLabel: "" });
     setCourseImage(null);
     setShowEditCourse(null);
     loadData();
@@ -688,7 +688,7 @@ export default function AdminPage() {
                       )}
                     </div>
                     <div style={{ display: "flex", gap: 6, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                      <button className="btn btn-sm btn-secondary" style={{ flex: 1, justifyContent: "center" }} onClick={e => { e.stopPropagation(); setCourseForm({ title: c.title, description: c.description, price: c.price ? (c.price / 100).toFixed(2) : "", maxEnrollment: c.maxEnrollment || "" }); setShowEditCourse(c); }}><Icon name="edit" size={14}/> Edit</button>
+                      <button className="btn btn-sm btn-secondary" style={{ flex: 1, justifyContent: "center" }} onClick={e => { e.stopPropagation(); setCourseForm({ title: c.title, description: c.description, price: c.price ? (c.price / 100).toFixed(2) : "", maxEnrollment: c.maxEnrollment || "", promoLabel: c.promoLabel || "" }); setShowEditCourse(c); }}><Icon name="edit" size={14}/> Edit</button>
                       {tenant?.featureCourseAccess && <button className="btn btn-sm" style={{ flex: 1, justifyContent: "center", background: "var(--accent-soft)", color: "var(--accent)" }} onClick={e => { e.stopPropagation(); openCourseAccess(c); }}><Icon name="users" size={14}/> Access</button>}
                       <button className="btn btn-sm btn-danger" onClick={e => { e.stopPropagation(); deleteCourse(c.id); }}><Icon name="trash" size={14}/></button>
                     </div>
@@ -717,11 +717,16 @@ export default function AdminPage() {
                   <label className="label">Course Image (optional)</label>
                   <input className="input" type="file" accept="image/*" onChange={e => setCourseImage(e.target.files?.[0] || null)} style={{ padding: 8 }} />
                 </div>
+                <div>
+                  <label className="label">Promo Label (optional)</label>
+                  <input className="input" value={courseForm.promoLabel} onChange={e => setCourseForm(p => ({ ...p, promoLabel: e.target.value }))} placeholder='e.g. Early bird price! Price increases soon.' />
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Shows as a badge on the course card. Leave blank for no promo.</div>
+                </div>
                 <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={addCourse}><Icon name="plus" size={16}/> Create Course</button>
               </div>
             </Modal>
 
-            <Modal open={!!showEditCourse} onClose={() => { setShowEditCourse(null); setCourseForm({ title: "", description: "", price: "", maxEnrollment: "" }); }} title="Edit Course">
+            <Modal open={!!showEditCourse} onClose={() => { setShowEditCourse(null); setCourseForm({ title: "", description: "", price: "", maxEnrollment: "", promoLabel: "" }); }} title="Edit Course">
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <div><label className="label">Course Title</label><input className="input" value={courseForm.title} onChange={e => setCourseForm(p => ({ ...p, title: e.target.value }))}/></div>
                 <div><label className="label">Description</label><textarea className="input" style={{ minHeight: 80 }} value={courseForm.description} onChange={e => setCourseForm(p => ({ ...p, description: e.target.value }))}/></div>
@@ -748,6 +753,11 @@ export default function AdminPage() {
                     </div>
                   )}
                   <input className="input" type="file" accept="image/*" onChange={e => setCourseImage(e.target.files?.[0] || null)} style={{ padding: 8 }} />
+                </div>
+                <div>
+                  <label className="label">Promo Label (optional)</label>
+                  <input className="input" value={courseForm.promoLabel} onChange={e => setCourseForm(p => ({ ...p, promoLabel: e.target.value }))} placeholder='e.g. Early bird price! Price increases soon.' />
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Shows as a badge on the course card. Leave blank for no promo.</div>
                 </div>
                 <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={updateCourse}><Icon name="check" size={16}/> Save Changes</button>
               </div>

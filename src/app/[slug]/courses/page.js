@@ -28,6 +28,20 @@ export default function CourseCatalogPage() {
     return currency === "ZAR" ? `R ${amount}` : `${currency} ${amount}`;
   };
 
+  const selectCourse = (c) => {
+    if (c.maxEnrollment > 0 && c.enrolledCount >= c.maxEnrollment) return;
+    setSelectedCourse(c); setError(""); setSelectedSlot(null);
+    if (tenant?.featureBookings) {
+      fetch(`/api/booking-slots?slug=${encodeURIComponent(slug)}&future=true&courseId=${c.id}`)
+        .then(r => r.json()).then(d => setAvailableSlots(d.slots || [])).catch(() => setAvailableSlots([]));
+    }
+    // Scroll to form on mobile
+    setTimeout(() => {
+      const el = document.getElementById("enroll-form");
+      if (el && window.innerWidth < 768) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  };
+
   const handlePurchase = async () => {
     if (!selectedCourse || !form.email || !form.name || !form.idNumber) {
       setError("All fields are required");
@@ -60,7 +74,6 @@ export default function CourseCatalogPage() {
         setLoading(false);
         return;
       }
-      // Redirect to Paystack checkout
       window.location.href = data.authorizationUrl;
     } catch {
       setError("Connection error. Please try again.");
@@ -86,9 +99,14 @@ export default function CourseCatalogPage() {
                 <Logo size={80} src={tenant.logoUrl} />
               </div>
             )}
-            <h1 style={{ fontFamily: `'${tenant.fontHeading}', sans-serif`, fontSize: 32, fontWeight: 800, margin: "0 0 8px" }}>
+            <h1 style={{ fontFamily: `'${tenant.fontHeading}', sans-serif`, fontSize: 32, fontWeight: 800, margin: "0 0 4px" }}>
               {tenant.name}
             </h1>
+            {tenant.tagline && (
+              <p style={{ fontFamily: `'${tenant.fontHeading}', sans-serif`, fontSize: 18, color: "var(--text-muted)", margin: "0 0 8px", fontWeight: 500 }}>
+                {tenant.tagline}
+              </p>
+            )}
             <p style={{ color: "var(--text-muted)", fontSize: 16 }}>Available Courses</p>
           </div>
 
@@ -102,43 +120,92 @@ export default function CourseCatalogPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20, marginBottom: 40 }}>
               {courses.map(c => {
                 const isFull = c.maxEnrollment > 0 && c.enrolledCount >= c.maxEnrollment;
+                const isSelected = selectedCourse?.id === c.id;
                 return (
                 <div key={c.id} className="card" style={{
-                  cursor: isFull ? "not-allowed" : "pointer", transition: "border-color 0.2s, transform 0.2s",
-                  border: selectedCourse?.id === c.id ? "2px solid var(--accent)" : "1px solid var(--border)",
-                  opacity: isFull ? 0.6 : 1,
+                  cursor: isFull ? "not-allowed" : "pointer", transition: "border-color 0.2s, transform 0.2s, box-shadow 0.2s",
+                  border: isSelected ? "2px solid var(--accent)" : "1px solid var(--border)",
+                  opacity: isFull ? 0.6 : 1, padding: 0, overflow: "hidden",
+                  boxShadow: isSelected ? "0 4px 20px rgba(0,0,0,0.1)" : "none",
                 }}
-                  onClick={() => {
-                    if (isFull) return;
-                    setSelectedCourse(c); setError(""); setSelectedSlot(null);
-                    if (tenant?.featureBookings) {
-                      fetch(`/api/booking-slots?slug=${encodeURIComponent(slug)}&future=true&courseId=${c.id}`)
-                        .then(r => r.json()).then(d => setAvailableSlots(d.slots || [])).catch(() => setAvailableSlots([]));
-                    }
-                  }}
+                  onClick={() => selectCourse(c)}
                   onMouseEnter={e => !isFull && (e.currentTarget.style.transform = "translateY(-2px)")}
                   onMouseLeave={e => e.currentTarget.style.transform = "none"}>
-                  {c.imageUrl && (
-                    <div style={{ margin: "-24px -24px 16px", borderRadius: "12px 12px 0 0", overflow: "hidden" }}>
-                      <img src={c.imageUrl} alt="" style={{ width: "100%", height: 180, objectFit: "cover", display: "block" }} />
-                    </div>
-                  )}
-                  <h3 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700 }}>{c.title}</h3>
-                  <p style={{ color: "var(--text-muted)", fontSize: 14, margin: "0 0 16px", minHeight: 40 }}>
-                    {c.description || "No description"}
-                  </p>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                    <span style={{ fontSize: 24, fontWeight: 800, color: "var(--accent)" }}>
-                      {formatPrice(c.price, c.currency)}
-                    </span>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      <span className="badge badge-accent">{c._count.modules} modules</span>
-                      {c.maxEnrollment > 0 && (
-                        isFull
-                          ? <span className="badge badge-danger">Fully Enrolled</span>
-                          : <span className="badge badge-success">{c.maxEnrollment - c.enrolledCount} spot{c.maxEnrollment - c.enrolledCount !== 1 ? "s" : ""} left</span>
+
+                  {/* Image with promo overlay */}
+                  {c.imageUrl ? (
+                    <div style={{ position: "relative", overflow: "hidden" }}>
+                      <img src={c.imageUrl} alt="" style={{ width: "100%", height: 200, objectFit: "cover", display: "block" }} />
+                      {c.promoLabel && (
+                        <div style={{
+                          position: "absolute", top: 12, left: 12,
+                          background: "linear-gradient(135deg, var(--accent), var(--brand-primary))",
+                          color: "#fff", padding: "6px 14px", borderRadius: 8,
+                          fontSize: 12, fontWeight: 700, boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                          display: "flex", alignItems: "center", gap: 6,
+                        }}>
+                          🏷️ {c.promoLabel}
+                        </div>
+                      )}
+                      {isFull && (
+                        <div style={{
+                          position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          <span style={{ color: "#fff", fontWeight: 800, fontSize: 18 }}>FULLY ENROLLED</span>
+                        </div>
                       )}
                     </div>
+                  ) : c.promoLabel ? (
+                    <div style={{ padding: "10px 20px 0" }}>
+                      <div style={{
+                        background: "linear-gradient(135deg, var(--accent), var(--brand-primary))",
+                        color: "#fff", padding: "6px 14px", borderRadius: 8,
+                        fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6,
+                      }}>
+                        🏷️ {c.promoLabel}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Content */}
+                  <div style={{ padding: "16px 20px 20px" }}>
+                    <h3 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700 }}>{c.title}</h3>
+                    <p style={{ color: "var(--text-muted)", fontSize: 14, margin: "0 0 16px", minHeight: 40, lineHeight: 1.5 }}>
+                      {c.description || "No description"}
+                    </p>
+
+                    {/* Badges */}
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
+                      <span className="badge badge-accent">{c._count.modules} MODULES</span>
+                      {c.maxEnrollment > 0 && !isFull && (
+                        <span className="badge badge-success">{c.maxEnrollment - c.enrolledCount} SPOT{c.maxEnrollment - c.enrolledCount !== 1 ? "S" : ""} LEFT</span>
+                      )}
+                    </div>
+
+                    {/* Price button */}
+                    <button
+                      disabled={isFull}
+                      style={{
+                        width: "100%", padding: "14px 20px", borderRadius: 10, border: "none", cursor: isFull ? "not-allowed" : "pointer",
+                        background: isFull ? "var(--border)" : "linear-gradient(135deg, var(--accent), var(--brand-primary))",
+                        color: "#fff", fontSize: 17, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                        transition: "transform 0.15s, box-shadow 0.15s",
+                        boxShadow: isFull ? "none" : "0 3px 12px rgba(0,0,0,0.15)",
+                      }}
+                      onMouseEnter={e => !isFull && (e.currentTarget.style.transform = "scale(1.02)")}
+                      onMouseLeave={e => e.currentTarget.style.transform = "none"}
+                      onClick={e => { e.stopPropagation(); selectCourse(c); }}
+                    >
+                      🛒 {formatPrice(c.price, c.currency)} – BUY NOW
+                    </button>
+
+                    {/* Promo text under button */}
+                    {c.promoLabel && (
+                      <div style={{ textAlign: "center", marginTop: 8, fontSize: 12, color: "var(--accent)", fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                        ⏰ {c.promoLabel}
+                      </div>
+                    )}
                   </div>
                 </div>
                 );
@@ -148,7 +215,7 @@ export default function CourseCatalogPage() {
 
           {/* Enrollment form */}
           {selectedCourse && (
-            <div style={{ maxWidth: 480, margin: "0 auto" }}>
+            <div id="enroll-form" style={{ maxWidth: 480, margin: "0 auto" }}>
               <div className="card">
                 <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Enroll in: {selectedCourse.title}</h2>
                 <p style={{ color: "var(--accent)", fontSize: 22, fontWeight: 800, margin: "0 0 20px" }}>

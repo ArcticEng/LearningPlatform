@@ -47,11 +47,11 @@ export async function POST(req) {
   }
   if (!user.tenantId) return NextResponse.json({ error: "No tenant context" }, { status: 400 });
 
-  const { title, description, price, maxEnrollment } = await req.json();
+  const { title, description, price, maxEnrollment, promoLabel } = await req.json();
   if (!title) return NextResponse.json({ error: "Title required" }, { status: 400 });
 
   const course = await prisma.course.create({
-    data: { title, description: description || "", price: price || 0, maxEnrollment: maxEnrollment || 0, tenantId: user.tenantId },
+    data: { title, description: description || "", price: price || 0, maxEnrollment: maxEnrollment || 0, promoLabel: promoLabel || "", tenantId: user.tenantId },
   });
 
   return NextResponse.json({ course }, { status: 201 });
@@ -64,7 +64,7 @@ export async function PUT(req) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id, title, description, price, maxEnrollment } = await req.json();
+  const { id, title, description, price, maxEnrollment, promoLabel } = await req.json();
   if (!id || !title) return NextResponse.json({ error: "ID and title required" }, { status: 400 });
 
   const course = await prisma.course.findFirst({ where: { id, tenantId: user.tenantId } });
@@ -73,6 +73,7 @@ export async function PUT(req) {
   const updateData = { title, description: description || "" };
   if (price !== undefined) updateData.price = price || 0;
   if (maxEnrollment !== undefined) updateData.maxEnrollment = maxEnrollment || 0;
+  if (promoLabel !== undefined) updateData.promoLabel = promoLabel || "";
 
   const updated = await prisma.course.update({
     where: { id },

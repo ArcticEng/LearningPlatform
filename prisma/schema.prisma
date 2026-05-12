@@ -71,6 +71,7 @@ model Course {
   title       String
   description String   @default("")
   imageUrl    String   @default("")          // course cover image path
+  promoLabel  String   @default("")          // e.g. "Early bird price! Price increases soon!"
   price       Int      @default(0)          // price in cents (e.g. 50000 = R500.00), 0 = free
   currency    String   @default("ZAR")
   maxEnrollment Int    @default(0)           // 0 = unlimited, >0 = cap
