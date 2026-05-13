@@ -29,6 +29,7 @@ export async function GET() {
         orderBy: { order: "asc" },
         include: {
           test: { include: { questions: { orderBy: { order: "asc" } } } },
+          workbook: { select: { id: true, title: true } },
         },
       },
       _count: { select: { results: true } },

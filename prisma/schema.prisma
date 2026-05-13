@@ -114,6 +114,7 @@ model Module {
   test      Test?
   results   Result[]
   progress  Progress[]
+  workbook  Workbook?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -251,6 +252,7 @@ model Booking {
 model Workbook {
   id          String   @id @default(uuid())
   moduleId    String   @unique                // one workbook per module
+  module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   tenantId    String
   title       String   @default("")
   sections    String   @default("[]")          // JSON: array of section objects

@@ -97,6 +97,12 @@ export default function AdminPage() {
   const [showCreateSlot, setShowCreateSlot] = useState(false);
   const [editingSlotId, setEditingSlotId] = useState(null); // when set, modal is in edit mode
   const [slotForm, setSlotForm] = useState({ title: "", date: "", startTime: "", endTime: "", location: "", capacity: 10, courseId: "" });
+  const [showWorkbook, setShowWorkbook] = useState(null); // module for workbook editing
+  const [workbookSections, setWorkbookSections] = useState([]);
+  const [workbookTitle, setWorkbookTitle] = useState("");
+  const [workbookLoading, setWorkbookLoading] = useState(false);
+  const [workbookSubmissions, setWorkbookSubmissions] = useState([]);
+  const [showSubmission, setShowSubmission] = useState(null);
 
   // Forms
   const [learnerForm, setLearnerForm] = useState({ name: "", idNumber: "", password: "" });
@@ -229,6 +235,64 @@ export default function AdminPage() {
     }
 
     setImportLoading(false);
+  };
+
+  // Workbook functions
+  const openWorkbook = async (mod) => {
+    setShowWorkbook(mod);
+    setWorkbookLoading(true);
+    try {
+      const res = await api.get(`/api/workbooks?moduleId=${mod.id}`);
+      if (res.workbook) {
+        setWorkbookTitle(res.workbook.title || "");
+        setWorkbookSections(res.workbook.sections || []);
+        // Load submissions
+        const subRes = await api.get(`/api/workbooks?workbookId=${res.workbook.id}`);
+        setWorkbookSubmissions(subRes.workbook?.submissions || []);
+      } else {
+        setWorkbookTitle("");
+        setWorkbookSections([]);
+        setWorkbookSubmissions([]);
+      }
+    } catch { setWorkbookSections([]); setWorkbookSubmissions([]); }
+    setWorkbookLoading(false);
+  };
+
+  const saveWorkbook = async () => {
+    if (!showWorkbook) return;
+    await api.post("/api/workbooks", { moduleId: showWorkbook.id, title: workbookTitle, sections: workbookSections });
+    alert("Workbook saved!");
+    loadData();
+  };
+
+  const importWorkbookFromText = async (text) => {
+    setWorkbookLoading(true);
+    try {
+      const res = await fetch("/api/workbooks/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, title: workbookTitle || showWorkbook?.title || "Practical Skills Workbook" }),
+      });
+      const data = await res.json();
+      if (data.sections) {
+        setWorkbookSections(data.sections);
+        if (data.title) setWorkbookTitle(data.title);
+        alert(`AI generated ${data.sections.length} sections. Review and save.`);
+      } else {
+        alert(data.error || "Failed to import");
+      }
+    } catch (err) { alert("Import error: " + err.message); }
+    setWorkbookLoading(false);
+  };
+
+  const reviewSubmission = async (sub, status, feedback, score) => {
+    await fetch("/api/workbooks/submissions", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: sub.id, status, feedback, score }),
+    });
+    // Reload
+    if (showWorkbook) openWorkbook(showWorkbook);
   };
 
   const deleteLearner = async (id) => {
@@ -853,6 +917,7 @@ export default function AdminPage() {
                           {m.pdfPath && <span className="badge badge-accent" style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>PDF: {m.pdfName}</span>}
                           {m.videoUrl && <span className="badge" style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6" }}>Video</span>}
                           {m.test ? <span className="badge badge-success">{m.test.questions.length} questions</span> : <span className="badge badge-warn">No test</span>}
+                          {m.workbook && <span className="badge" style={{ background: "rgba(45,212,191,0.15)", color: "#2dd4bf" }}>📝 Workbook</span>}
                         </div>
                       </div>
                     </div>
@@ -867,6 +932,9 @@ export default function AdminPage() {
                         <Icon name="upload" size={14}/> {importLoading && testModule?.id === m.id ? "Importing…" : "Import from Doc"}
                         <input type="file" accept=".docx,.pdf,.txt" style={{ display: "none" }} onChange={(e) => handleImportDoc(e, m)} disabled={importLoading}/>
                       </label>}
+                      {tenant?.featureWorkbooks && <button className="btn btn-sm" style={{ background: "rgba(45,212,191,0.15)", color: "#2dd4bf" }} onClick={() => openWorkbook(m)}>
+                        <Icon name="file" size={14}/> Workbook
+                      </button>}
                       <button className="btn btn-sm btn-danger" onClick={() => deleteModule(m.id)}><Icon name="trash" size={14}/></button>
                     </div>
                   </div>
@@ -952,6 +1020,62 @@ export default function AdminPage() {
             </Modal>
           </div>
         )}
+
+        {/* WORKBOOK EDITOR */}
+        <Modal open={!!showWorkbook} onClose={() => { setShowWorkbook(null); setWorkbookSections([]); setWorkbookSubmissions([]); setShowSubmission(null); }} title={`Workbook: ${showWorkbook?.title || ""}`}>
+          {workbookLoading ? <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>Loading...</div> : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div><label className="label">Workbook Title</label><input className="input" value={workbookTitle} onChange={e => setWorkbookTitle(e.target.value)} placeholder="e.g. PM-01 Practical Skills Workbook" /></div>
+              <div style={{ padding: 16, background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Import from text (AI-powered)</div>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>Paste the workbook text and AI will convert it into interactive sections.</p>
+                <textarea id="wb-import-text" className="input" rows={4} placeholder="Paste workbook content here..." style={{ marginBottom: 10 }} />
+                <button className="btn btn-sm btn-primary" disabled={workbookLoading} onClick={() => { const t = document.getElementById("wb-import-text")?.value; if (!t) return alert("Paste text first"); importWorkbookFromText(t); }}><Icon name="upload" size={14}/> Generate Sections with AI</button>
+              </div>
+              {workbookSections.length > 0 && <div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Sections ({workbookSections.length})</div>
+                <div style={{ maxHeight: 300, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+                  {workbookSections.map((s, i) => <div key={i} style={{ padding: "8px 12px", background: "var(--surface-alt)", borderRadius: 8, fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: "var(--text-muted)", fontSize: 11, fontWeight: 700, minWidth: 24 }}>{i+1}</span>
+                    <span className="badge" style={{ fontSize: 10 }}>{s.type}</span>
+                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.text || s.label || s.title || ""}</span>
+                    <button className="btn btn-sm btn-danger" style={{ padding: "2px 6px" }} onClick={() => setWorkbookSections(p => p.filter((_, j) => j !== i))}>×</button>
+                  </div>)}
+                </div>
+              </div>}
+              {workbookSubmissions.length > 0 && <div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Submissions ({workbookSubmissions.length})</div>
+                {workbookSubmissions.map(sub => <div key={sub.id} style={{ padding: "10px 14px", background: "var(--surface-alt)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                  <div><span style={{ fontWeight: 600, fontSize: 14 }}>{sub.userName}</span><span style={{ color: "var(--text-muted)", fontSize: 12, marginLeft: 8 }}>{sub.userIdNumber}</span></div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <span className={`badge ${sub.status === "submitted" ? "badge-accent" : sub.status === "reviewed" ? "badge-success" : "badge-warn"}`}>{sub.status}</span>
+                    <button className="btn btn-sm btn-secondary" onClick={() => setShowSubmission(sub)}>Review</button>
+                  </div>
+                </div>)}
+              </div>}
+              <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={saveWorkbook} disabled={workbookSections.length === 0}><Icon name="check" size={16}/> Save Workbook</button>
+            </div>
+          )}
+        </Modal>
+        {showSubmission && <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--modal-bg)", padding: 20 }} onClick={e => { if (e.target === e.currentTarget) setShowSubmission(null); }}>
+          <div style={{ background: "var(--surface)", borderRadius: 16, padding: 24, maxWidth: 600, width: "100%", maxHeight: "85vh", overflowY: "auto", border: "1px solid var(--border)" }}>
+            <h3 style={{ margin: "0 0 16px" }}>Review: {showSubmission.userName}</h3>
+            <div style={{ maxHeight: 300, overflowY: "auto", marginBottom: 20 }}>
+              {Object.entries(showSubmission.answers || {}).map(([key, val]) => <div key={key} style={{ padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 13 }}>
+                <div style={{ color: "var(--text-muted)", fontSize: 11, fontWeight: 700 }}>{key}</div>
+                <div>{typeof val === "object" ? JSON.stringify(val) : String(val)}</div>
+              </div>)}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div><label className="label">Score</label><input className="input" id="review-score" defaultValue={showSubmission.score || ""} /></div>
+              <div><label className="label">Feedback</label><textarea className="input" id="review-feedback" rows={3} defaultValue={showSubmission.feedback || ""} /></div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={() => { reviewSubmission(showSubmission, "reviewed", document.getElementById("review-feedback")?.value, document.getElementById("review-score")?.value); setShowSubmission(null); }}>Mark Reviewed</button>
+                <button className="btn btn-secondary" style={{ flex: 1, justifyContent: "center" }} onClick={() => { reviewSubmission(showSubmission, "returned", document.getElementById("review-feedback")?.value, document.getElementById("review-score")?.value); setShowSubmission(null); }}>Return for Editing</button>
+              </div>
+            </div>
+          </div>
+        </div>}
 
         {/* ACCESS CODES */}
         {view === "access-codes" && (() => {
