@@ -6,6 +6,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import ThemeProvider from "@/components/ThemeProvider";
 import Logo from "@/components/Logo";
 import BookingCalendar from "@/components/BookingCalendar";
+import WorkbookViewer from "@/components/WorkbookViewer";
 
 // react-pdf must be client-only — avoids SSR crashes from the worker
 const PDFViewer = dynamic(() => import("@/components/PDFViewer"), {
@@ -68,6 +69,8 @@ export default function LearnerPage() {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [showReschedule, setShowReschedule] = useState(null);
   const [selectedNewSlot, setSelectedNewSlot] = useState(null);
+  const [playerTab, setPlayerTab] = useState("content"); // "content" | "workbook"
+  const [activeWorkbook, setActiveWorkbook] = useState(null);
   // Pending booking action that's blocked on a missing email/phone profile prompt.
   // Shape: { type: "book" | "reschedule", slot, oldBookingId? }
   const [pendingBookingAction, setPendingBookingAction] = useState(null);
@@ -309,6 +312,18 @@ export default function LearnerPage() {
     }
   }, [activeModule?.id, tenant?.featureContinue]);
 
+  // Load workbook when module changes
+  useEffect(() => {
+    const mod = activeModule || (activeCourse?.modules?.[0]);
+    if (mod?.workbook && tenant?.featureWorkbooks) {
+      fetch(`/api/workbooks?moduleId=${mod.id}&submission=true`, { headers: { "Content-Type": "application/json" } })
+        .then(r => r.json()).then(d => { if (d.workbook) setActiveWorkbook(d.workbook); else setActiveWorkbook(null); }).catch(() => setActiveWorkbook(null));
+    } else {
+      setActiveWorkbook(null);
+    }
+    setPlayerTab("content");
+  }, [activeModule?.id, activeCourse?.id, tenant?.featureWorkbooks]);
+
   const logout = async () => {
     await fetch("/api/auth", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tenantSlug: tenant?.slug }) });
     router.push(tenant?.slug ? `/${tenant.slug}` : "/");
@@ -442,7 +457,14 @@ export default function LearnerPage() {
 
     const goToModule = (m) => {
       setActiveModule(m);
+      setPlayerTab("content");
+      setActiveWorkbook(null);
       if (isMobile) setPlayerSidebar(false);
+      // Load workbook if module has one
+      if (m.workbook && tenant?.featureWorkbooks) {
+        fetch(`/api/workbooks?moduleId=${m.id}&submission=true`, { headers: { "Content-Type": "application/json" } })
+          .then(r => r.json()).then(d => { if (d.workbook) setActiveWorkbook(d.workbook); }).catch(() => {});
+      }
     };
 
     return (
@@ -522,6 +544,7 @@ export default function LearnerPage() {
                         {m.pdfPath && <span style={{ fontSize: 10, color: "var(--text-muted)" }}>📄 PDF</span>}
                         {m.videoUrl && <span style={{ fontSize: 10, color: "#8b5cf6" }}>▶ Video</span>}
                         {m.test && <span style={{ fontSize: 10, color: "var(--text-muted)" }}>📝 {m.test.questions.length}Q</span>}
+                        {m.workbook && <span style={{ fontSize: 10, color: "#2dd4bf" }}>📓 Workbook</span>}
                       </div>
                     </div>
                   </div>
@@ -561,7 +584,30 @@ export default function LearnerPage() {
                   </div>
                 </div>
 
-                {/* Full-screen content area */}
+                {/* Tab bar - shows when workbook exists */}
+                {activeWorkbook && (
+                  <div style={{ display: "flex", borderBottom: "1px solid var(--border)", flexShrink: 0, background: "var(--surface)" }}>
+                    <button onClick={() => setPlayerTab("content")} style={{
+                      flex: 1, padding: "10px 16px", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600,
+                      background: playerTab === "content" ? "var(--bg)" : "transparent",
+                      color: playerTab === "content" ? "var(--text)" : "var(--text-muted)",
+                      borderBottom: playerTab === "content" ? "2px solid var(--accent)" : "2px solid transparent",
+                    }}>
+                      📄 Study Material
+                    </button>
+                    <button onClick={() => setPlayerTab("workbook")} style={{
+                      flex: 1, padding: "10px 16px", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600,
+                      background: playerTab === "workbook" ? "var(--bg)" : "transparent",
+                      color: playerTab === "workbook" ? "var(--text)" : "var(--text-muted)",
+                      borderBottom: playerTab === "workbook" ? "2px solid var(--accent)" : "2px solid transparent",
+                    }}>
+                      📝 Workbook {activeWorkbook.submission?.status === "submitted" ? "✓" : activeWorkbook.submission?.status === "reviewed" ? "✅" : ""}
+                    </button>
+                  </div>
+                )}
+
+                {/* Content tab */}
+                {playerTab === "content" && (
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
                   {/* Video — if video exists, show it in aspect ratio */}
@@ -614,6 +660,34 @@ export default function LearnerPage() {
                     </div>
                   )}
                 </div>
+                )}
+
+                {/* Workbook tab */}
+                {playerTab === "workbook" && activeWorkbook && (
+                  <div style={{ flex: 1, overflowY: "auto", padding: "24px 16px" }}>
+                    <WorkbookViewer
+                      workbook={activeWorkbook}
+                      onSave={async (answers) => {
+                        const res = await fetch("/api/workbooks/submissions", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ workbookId: activeWorkbook.id, answers, submit: false }),
+                        });
+                        const data = await res.json();
+                        if (data.submission) setActiveWorkbook(prev => ({ ...prev, submission: data.submission }));
+                      }}
+                      onSubmit={async (answers) => {
+                        const res = await fetch("/api/workbooks/submissions", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ workbookId: activeWorkbook.id, answers, submit: true }),
+                        });
+                        const data = await res.json();
+                        if (data.submission) setActiveWorkbook(prev => ({ ...prev, submission: data.submission }));
+                      }}
+                    />
+                  </div>
+                )}
               </>
             ) : (
               <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
