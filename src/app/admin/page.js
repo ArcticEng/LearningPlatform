@@ -265,6 +265,25 @@ export default function AdminPage() {
     loadData();
   };
 
+  const importWorkbookFromFile = async (file) => {
+    setWorkbookLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("title", workbookTitle || showWorkbook?.title || "Practical Skills Workbook");
+      const res = await fetch("/api/workbooks/import", { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.sections) {
+        setWorkbookSections(data.sections);
+        if (data.title) setWorkbookTitle(data.title);
+        alert(`AI generated ${data.sections.length} sections from PDF. Review and save.`);
+      } else {
+        alert(data.error || "Failed to import");
+      }
+    } catch (err) { alert("Import error: " + err.message); }
+    setWorkbookLoading(false);
+  };
+
   const importWorkbookFromText = async (text) => {
     setWorkbookLoading(true);
     try {
@@ -1027,10 +1046,19 @@ export default function AdminPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div><label className="label">Workbook Title</label><input className="input" value={workbookTitle} onChange={e => setWorkbookTitle(e.target.value)} placeholder="e.g. PM-01 Practical Skills Workbook" /></div>
               <div style={{ padding: 16, background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Import from text (AI-powered)</div>
-                <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>Paste the workbook text and AI will convert it into interactive sections.</p>
-                <textarea id="wb-import-text" className="input" rows={4} placeholder="Paste workbook content here..." style={{ marginBottom: 10 }} />
-                <button className="btn btn-sm btn-primary" disabled={workbookLoading} onClick={() => { const t = document.getElementById("wb-import-text")?.value; if (!t) return alert("Paste text first"); importWorkbookFromText(t); }}><Icon name="upload" size={14}/> Generate Sections with AI</button>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Import Workbook</div>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>Upload the practical skills workbook PDF and AI will convert it into interactive sections with fillable fields, tables, and checklists.</p>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                  <label className="btn btn-primary" style={{ cursor: workbookLoading ? "wait" : "pointer", opacity: workbookLoading ? 0.6 : 1, flex: 1, justifyContent: "center" }}>
+                    <Icon name="upload" size={14}/> {workbookLoading ? "Processing PDF..." : "Upload PDF"}
+                    <input type="file" accept=".pdf" style={{ display: "none" }} disabled={workbookLoading} onChange={e => { const f = e.target.files?.[0]; if (f) importWorkbookFromFile(f); e.target.value = ""; }} />
+                  </label>
+                </div>
+                <details style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  <summary style={{ cursor: "pointer", marginBottom: 8 }}>Or paste text manually</summary>
+                  <textarea id="wb-import-text" className="input" rows={4} placeholder="Paste workbook content here..." style={{ marginBottom: 10 }} />
+                  <button className="btn btn-sm btn-secondary" disabled={workbookLoading} onClick={() => { const t = document.getElementById("wb-import-text")?.value; if (!t) return alert("Paste text first"); importWorkbookFromText(t); }}><Icon name="upload" size={14}/> Generate from Text</button>
+                </details>
               </div>
               {workbookSections.length > 0 && <div>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Sections ({workbookSections.length})</div>
