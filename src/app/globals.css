@@ -543,6 +543,9 @@ td {
 
   .card { padding: 16px; border-radius: 12px; }
   .modal-content { padding: 20px; border-radius: 14px; max-height: 90vh; overflow-y: auto; width: 95vw !important; }
+
+  /* Notification dropdown responsive */
+  .notif-panel { left: 12px !important; right: 12px !important; width: auto !important; max-width: none !important; bottom: 70px !important; }
   .btn { padding: 10px 16px; }
   .btn-primary, .btn-secondary { font-size: 13px; }
   th, td { padding: 10px 12px; font-size: 13px; }
@@ -567,6 +570,10 @@ td {
 
   /* Test result card responsive */
   .card { overflow-x: auto; }
+
+  /* Workbook tables scroll on mobile */
+  .workbook-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
+  .workbook-table-wrap table { min-width: 500px; }
 }
 
 @media (max-width: 480px) {
@@ -584,4 +591,7 @@ td {
   .input { font-size: 16px; padding: 10px 12px; } /* prevents iOS zoom */
   select.input { font-size: 16px; }
   textarea.input { font-size: 16px; }
+
+  /* Notification panel full width on small phones */
+  .notif-panel { bottom: 60px !important; }
 }

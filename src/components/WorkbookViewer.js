@@ -149,7 +149,7 @@ export default function WorkbookViewer({ workbook, onSave, onSubmit, readOnly = 
               return (
                 <div key={si}>
                   {section.title && <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>{section.title}</div>}
-                  <div style={{ overflowX: "auto", borderRadius: 10, border: "1px solid var(--border)" }}>
+                  <div className="workbook-table-wrap" style={{ overflowX: "auto", borderRadius: 10, border: "1px solid var(--border)" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                       <thead>
                         <tr>

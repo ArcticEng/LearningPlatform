@@ -45,7 +45,18 @@ export async function POST(req) {
     return NextResponse.json({ error: "This slot is fully booked" }, { status: 400 });
   }
 
-  // Check for duplicate booking
+  // Check for duplicate booking (same email, same course — one booking per course)
+  const existingForCourse = await prisma.booking.findFirst({
+    where: {
+      tenantId: slot.tenantId,
+      studentEmail: studentEmail.toLowerCase().trim(),
+      courseId: courseId || slot.courseId || undefined,
+      status: "confirmed",
+    },
+  });
+  if (existingForCourse) return NextResponse.json({ error: "You already have a booking for this course" }, { status: 409 });
+
+  // Check for duplicate booking (same slot)
   const existing = await prisma.booking.findFirst({
     where: { slotId, studentEmail: studentEmail.toLowerCase().trim(), status: "confirmed" },
   });

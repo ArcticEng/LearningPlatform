@@ -25,7 +25,7 @@ export async function POST(req) {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
 
-  // Generate filename: course-img-{courseId}.{ext}
+  // Always use same extension to overwrite previous file
   const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
   const filename = `course-img-${courseId}.${ext}`;
 
@@ -33,7 +33,8 @@ export async function POST(req) {
   await mkdir(uploadDir, { recursive: true });
   await writeFile(path.join(uploadDir, filename), buffer);
 
-  const imageUrl = `/api/files/${filename}`;
+  // Add timestamp to bust browser cache
+  const imageUrl = `/api/files/${filename}?v=${Date.now()}`;
 
   // Update course with image URL
   await prisma.course.update({

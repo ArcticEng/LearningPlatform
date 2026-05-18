@@ -35,7 +35,9 @@ model Tenant {
   featureBookings    Boolean @default(false)  // booking calendar for in-person training
   featureCourseCap   Boolean @default(false)  // limit enrollment per course
   featureWorkbooks   Boolean @default(false)  // practical skills workbooks (ACT)
+  featureScheduling  Boolean @default(false)  // admin-driven training session scheduling (ACT)
   bookingAdminEmail  String  @default("")     // email to receive booking notifications
+  termsUrl           String  @default("")     // URL to terms & conditions page
   paystackSubaccount String  @default("")     // Paystack subaccount code (ACCT_xxx)
   platformFeePercent Int     @default(10)      // % Onyx Digital takes per transaction
 
@@ -203,6 +205,8 @@ model Payment {
   email           String
   name            String   @default("")
   idNumber        String   @default("")
+  phone           String   @default("")
+  address         String   @default("")   // delivery address
   amount          Int                  // in cents
   currency        String   @default("ZAR")
   status          String   @default("pending") // pending | success | failed
@@ -278,4 +282,49 @@ model WorkbookSubmission {
   updatedAt   DateTime  @updatedAt
 
   @@unique([workbookId, userId])
+}
+
+model TrainingSession {
+  id          String   @id @default(uuid())
+  tenantId    String
+  courseId    String?                         // optional: link to a course
+  title       String
+  description String   @default("")
+  date        DateTime
+  startTime   String   @default("")
+  endTime     String   @default("")
+  location    String   @default("")
+  notes       String   @default("")           // admin notes
+  capacity    Int      @default(20)
+  status      String   @default("scheduled")  // scheduled | completed | cancelled
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  attendees   SessionAttendee[]
+}
+
+model SessionAttendee {
+  id           String          @id @default(uuid())
+  sessionId    String
+  session      TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId       String
+  tenantId     String
+  status       String          @default("scheduled") // scheduled | confirmed | attended | absent | excused
+  notifiedAt   DateTime?                              // when they were first notified
+  reminderSent Boolean         @default(false)        // 24h reminder sent?
+  createdAt    DateTime        @default(now())
+
+  @@unique([sessionId, userId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String
+  title     String
+  message   String
+  type      String   @default("info")    // info | reminder | schedule | result
+  read      Boolean  @default(false)
+  linkUrl   String   @default("")        // optional deep link
+  createdAt DateTime @default(now())
 }

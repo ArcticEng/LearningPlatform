@@ -10,11 +10,12 @@ export default function CourseCatalogPage() {
   const [tenant, setTenant] = useState(null);
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
-  const [form, setForm] = useState({ email: "", name: "", idNumber: "", phone: "" });
+  const [form, setForm] = useState({ email: "", name: "", idNumber: "", phone: "", address: "", city: "", postalCode: "", province: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [availableSlots, setAvailableSlots] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [agreedTerms, setAgreedTerms] = useState(false);
 
   useEffect(() => {
     fetch(`/api/tenant?slug=${encodeURIComponent(slug)}`)
@@ -47,8 +48,16 @@ export default function CourseCatalogPage() {
       setError("All fields are required");
       return;
     }
+    if (!form.phone) {
+      setError("Phone number is required");
+      return;
+    }
     if (tenant?.featureBookings && availableSlots.length > 0 && !selectedSlot) {
       setError("Please select a training date");
+      return;
+    }
+    if (!agreedTerms) {
+      setError("Please agree to the Terms & Conditions");
       return;
     }
     setError("");
@@ -65,6 +74,7 @@ export default function CourseCatalogPage() {
           name: form.name,
           idNumber: form.idNumber,
           phone: form.phone,
+          address: form.address ? `${form.address}, ${form.city || ""}, ${form.province || ""}, ${form.postalCode || ""}`.replace(/, ,/g, ",").replace(/,\s*$/,"") : "",
           bookingSlotId: selectedSlot?.id || null,
         }),
       });
@@ -237,12 +247,28 @@ export default function CourseCatalogPage() {
                     <input className="input" value={form.idNumber} onChange={e => setForm(p => ({ ...p, idNumber: e.target.value }))} placeholder="Your ID number (becomes your login)" />
                     <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>This will be your login username</div>
                   </div>
-                  {tenant?.featureBookings && (
-                    <div>
-                      <label className="label">Phone Number</label>
-                      <input className="input" type="tel" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="e.g. 079 123 4567" />
+                  <div>
+                    <label className="label">Phone Number</label>
+                    <input className="input" type="tel" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="e.g. 079 123 4567" />
+                  </div>
+
+                  {/* Delivery Address */}
+                  <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14, marginTop: 4 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Delivery Address <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>(for starter kit)</span></div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <input className="input" value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} placeholder="Street address" />
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <input className="input" style={{ flex: 1 }} value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} placeholder="City" />
+                        <input className="input" style={{ flex: 1 }} value={form.postalCode} onChange={e => setForm(p => ({ ...p, postalCode: e.target.value }))} placeholder="Postal code" />
+                      </div>
+                      <select className="input" value={form.province} onChange={e => setForm(p => ({ ...p, province: e.target.value }))}>
+                        <option value="">Select province</option>
+                        <option>Eastern Cape</option><option>Free State</option><option>Gauteng</option>
+                        <option>KwaZulu-Natal</option><option>Limpopo</option><option>Mpumalanga</option>
+                        <option>North West</option><option>Northern Cape</option><option>Western Cape</option>
+                      </select>
                     </div>
-                  )}
+                  </div>
 
                   {/* Booking date selection */}
                   {tenant?.featureBookings && availableSlots.length > 0 && (
@@ -278,7 +304,16 @@ export default function CourseCatalogPage() {
                     </div>
                   )}
 
-                  <button className="btn btn-primary" disabled={loading}
+                  {/* Terms & Conditions */}
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", padding: "12px 14px", background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)" }}>
+                    <input type="checkbox" checked={agreedTerms} onChange={e => setAgreedTerms(e.target.checked)}
+                      style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)", flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-muted)" }}>
+                      I agree to the {tenant?.termsUrl ? <a href={tenant.termsUrl} target="_blank" rel="noopener" style={{ color: "var(--accent)", fontWeight: 600 }}>Terms & Conditions</a> : <span style={{ fontWeight: 600 }}>Terms & Conditions</span>} and understand the course enrollment policy.
+                    </span>
+                  </label>
+
+                  <button className="btn btn-primary" disabled={loading || !agreedTerms}
                     style={{ width: "100%", justifyContent: "center", padding: "14px 20px", fontSize: 16 }}
                     onClick={handlePurchase}>
                     {loading ? "Processing..." : `Pay ${formatPrice(selectedCourse.price, selectedCourse.currency)} & Enroll`}

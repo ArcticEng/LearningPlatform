@@ -8,7 +8,7 @@ const PAYSTACK_SECRET = () => process.env.PAYSTACK_SECRET_KEY;
 
 // POST /api/payments - initialize payment with split
 export async function POST(req) {
-  const { tenantSlug, courseId, email, name, idNumber, phone, bookingSlotId } = await req.json();
+  const { tenantSlug, courseId, email, name, idNumber, phone, bookingSlotId, address } = await req.json();
 
   if (!tenantSlug || !courseId || !email) {
     return NextResponse.json({ error: "tenantSlug, courseId, and email are required" }, { status: 400 });
@@ -60,6 +60,7 @@ export async function POST(req) {
         studentName: name || "",
         studentIdNumber: idNumber || "",
         studentPhone: phone || "",
+        deliveryAddress: address || "",
         bookingSlotId: bookingSlotId || "",
         tenantSlug,
         platformFee: `${tenant.platformFeePercent || 10}%`,
@@ -81,6 +82,8 @@ export async function POST(req) {
       email,
       name: name || "",
       idNumber: idNumber || "",
+      phone: phone || "",
+      address: address || "",
       amount: course.price,
       currency: course.currency || "ZAR",
       paystackRef: ref,

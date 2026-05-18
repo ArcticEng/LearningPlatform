@@ -36,6 +36,8 @@ function Icon({ name, size = 20 }) {
     menu: "M3 12h18M3 6h18M3 18h18",
     chevron: "M9 18l6-6-6-6",
     calendar: "M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM16 2v4M8 2v4M3 10h18",
+    bell: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0",
+    clock: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2",
     user: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2",
   };
   return (
@@ -71,6 +73,10 @@ export default function LearnerPage() {
   const [selectedNewSlot, setSelectedNewSlot] = useState(null);
   const [playerTab, setPlayerTab] = useState("content"); // "content" | "workbook"
   const [activeWorkbook, setActiveWorkbook] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [upcomingSessions, setUpcomingSessions] = useState([]);
   // Pending booking action that's blocked on a missing email/phone profile prompt.
   // Shape: { type: "book" | "reschedule", slot, oldBookingId? }
   const [pendingBookingAction, setPendingBookingAction] = useState(null);
@@ -114,6 +120,21 @@ export default function LearnerPage() {
     ]);
     setMyBookings((b.bookings || []).filter(bk => bk.status === "confirmed"));
     setAvailableSlots(s.slots || []);
+  }, []);
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      const n = await api.get("/api/notifications");
+      setNotifications(n.notifications || []);
+      setUnreadCount(n.unreadCount || 0);
+    } catch {}
+  }, []);
+
+  const loadSessions = useCallback(async () => {
+    try {
+      const s = await api.get("/api/sessions?upcoming=true");
+      setUpcomingSessions(s.sessions || []);
+    } catch {}
   }, []);
 
   const bookSlot = async (slot) => {
@@ -298,7 +319,9 @@ export default function LearnerPage() {
   // Load bookings when tenant is available and feature enabled
   useEffect(() => {
     if (tenant?.featureBookings) loadBookings();
-  }, [tenant, loadBookings]);
+    if (tenant?.featureScheduling) loadSessions();
+    loadNotifications();
+  }, [tenant, loadBookings, loadSessions, loadNotifications]);
 
   // Auto-hide sidebar on mobile
   useEffect(() => {
@@ -707,6 +730,7 @@ export default function LearnerPage() {
   const navItems = [
     { icon: "book", label: "My Courses", key: "my-courses" },
     ...(tenant?.featureBookings ? [{ icon: "calendar", label: "Bookings", key: "my-bookings" }] : []),
+    ...(tenant?.featureScheduling && upcomingSessions.length > 0 ? [{ icon: "clock", label: "My Sessions", key: "my-sessions" }] : []),
     { icon: "award", label: "My Results", key: "my-results" },
     { icon: "user", label: "Profile", key: "profile" },
   ];
@@ -736,6 +760,10 @@ export default function LearnerPage() {
         <div style={{ marginTop: "auto", padding: "16px 24px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
           <button className="btn btn-ghost" style={{ color: "var(--danger)", flex: 1, justifyContent: "flex-start" }} onClick={logout}>
             <Icon name="out" size={16}/> Sign Out
+          </button>
+          <button className="btn btn-ghost" style={{ position: "relative", padding: 6 }} onClick={() => { setShowNotifications(!showNotifications); if (!showNotifications) loadNotifications(); }} title="Notifications">
+            <Icon name="bell" size={18}/>
+            {unreadCount > 0 && <span style={{ position: "absolute", top: 2, right: 2, width: 16, height: 16, borderRadius: "50%", background: "var(--danger)", color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{unreadCount > 9 ? "9+" : unreadCount}</span>}
           </button>
           <ThemeToggle />
         </div>
@@ -837,6 +865,69 @@ export default function LearnerPage() {
                 onReschedule={rescheduleBooking}
               />
             </div>
+          </div>
+        )}
+
+        {/* MY SESSIONS */}
+        {view === "my-sessions" && (
+          <div>
+            <h1 className="page-title">Upcoming Sessions</h1>
+            {upcomingSessions.length === 0 ? (
+              <div className="card" style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
+                <p style={{ fontSize: 18, fontWeight: 600, color: "var(--text)" }}>No upcoming sessions</p>
+                <p>Your facilitator will schedule sessions and you'll be notified.</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {upcomingSessions.map(s => {
+                  const dateStr = new Date(s.date).toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+                  const daysUntil = Math.ceil((new Date(s.date) - new Date()) / (1000 * 60 * 60 * 24));
+                  return (
+                    <div key={s.id} className="card" style={{ borderLeft: `4px solid ${daysUntil <= 3 ? "var(--danger)" : "var(--accent)"}` }}>
+                      <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{s.title}</div>
+                      {s.description && <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "0 0 10px" }}>{s.description}</p>}
+                      <div style={{ display: "flex", gap: 16, fontSize: 14, color: "var(--text-muted)", flexWrap: "wrap", marginBottom: 8 }}>
+                        <span>\ud83d\udcc5 {dateStr}</span>
+                        {s.startTime && <span>\ud83d\udd52 {s.startTime}{s.endTime ? ` \u2013 ${s.endTime}` : ""}</span>}
+                        {s.location && <span>\ud83d\udccd {s.location}</span>}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        {daysUntil <= 0 ? <span className="badge badge-success">Today!</span>
+                          : daysUntil === 1 ? <span className="badge badge-warn">Tomorrow</span>
+                          : daysUntil <= 7 ? <span className="badge badge-accent">In {daysUntil} days</span>
+                          : <span className="badge">{daysUntil} days away</span>}
+                        <span className={`badge ${s.myStatus === "confirmed" ? "badge-success" : "badge-accent"}`}>{s.myStatus || "scheduled"}</span>
+                      </div>
+                      {s.notes && <div style={{ marginTop: 10, padding: 10, background: "var(--surface-alt)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)" }}>\ud83d\udcdd {s.notes}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* NOTIFICATIONS DROPDOWN */}
+        {showNotifications && (
+          <div className="notif-panel" style={{ position: "fixed", bottom: 80, left: 24, width: 340, maxHeight: 400, overflowY: "auto", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, boxShadow: "0 8px 40px rgba(0,0,0,0.2)", zIndex: 200, padding: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Notifications</h3>
+              {unreadCount > 0 && <button className="btn btn-sm btn-ghost" style={{ fontSize: 11 }} onClick={async () => { await api.put("/api/notifications", { markAllRead: true }); loadNotifications(); }}>Mark all read</button>}
+            </div>
+            {notifications.length === 0 ? (
+              <p style={{ color: "var(--text-muted)", textAlign: "center", padding: 24, fontSize: 14 }}>No notifications</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {notifications.map(n => (
+                  <div key={n.id} onClick={async () => { if (!n.read) { await api.put("/api/notifications", { id: n.id }); loadNotifications(); } }}
+                    style={{ padding: "10px 12px", borderRadius: 10, background: n.read ? "transparent" : "var(--accent-soft)", cursor: "pointer", borderLeft: n.read ? "3px solid transparent" : "3px solid var(--accent)" }}>
+                    <div style={{ fontSize: 13, fontWeight: n.read ? 400 : 700 }}>{n.title}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.4 }}>{n.message}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>{new Date(n.createdAt).toLocaleDateString("en-ZA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

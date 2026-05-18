@@ -21,6 +21,8 @@ export async function GET(req) {
       featureBookings: true, bookingAdminEmail: true,
       featureCourseCap: true,
       featureWorkbooks: true,
+      featureScheduling: true,
+      termsUrl: true,
     },
   });
 

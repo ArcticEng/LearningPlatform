@@ -74,6 +74,8 @@ const defaultTenantForm = {
   featureBookings: false, bookingAdminEmail: "",
   featureCourseCap: false,
   featureWorkbooks: false,
+  featureScheduling: false,
+  termsUrl: "",
 };
 
 export default function SuperAdminPage() {
@@ -198,6 +200,8 @@ export default function SuperAdminPage() {
       bookingAdminEmail: t.bookingAdminEmail || "",
       featureCourseCap: t.featureCourseCap || false,
       featureWorkbooks: t.featureWorkbooks || false,
+      featureScheduling: t.featureScheduling || false,
+      termsUrl: t.termsUrl || "",
     });
     setShowEdit(t);
   };
@@ -419,6 +423,7 @@ export default function SuperAdminPage() {
               ["featureBookings", "Booking Calendar", "Students can book in-person training dates. Confirmation emails sent automatically."],
               ["featureCourseCap", "Course Enrollment Cap", "Limit maximum number of students who can enroll in each course"],
               ["featureWorkbooks", "Practical Workbooks", "Interactive workbooks where learners fill in answers and submit for review (ACT)"],
+              ["featureScheduling", "Training Scheduler", "Admin creates & assigns training sessions to learners with notifications and reminders (ACT)"],
             ].map(([key, label, desc]) => (
               <div key={key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
                 <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, flexShrink: 0 }}>
@@ -469,6 +474,13 @@ export default function SuperAdminPage() {
               <div style={{ marginTop: 12 }}>
                 <label className="label">Booking Admin Email (receives booking notifications)</label>
                 <input className="input" type="email" value={form.bookingAdminEmail || ""} onChange={e => set("bookingAdminEmail", e.target.value)} placeholder="admin@example.com" />
+              </div>
+            )}
+            {form.featurePayments && (
+              <div style={{ marginTop: 12 }}>
+                <label className="label">Terms & Conditions URL</label>
+                <input className="input" value={form.termsUrl || ""} onChange={e => set("termsUrl", e.target.value)} placeholder="https://yoursite.com/terms" />
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Students must agree before purchase. Leave blank to show text-only checkbox.</div>
               </div>
             )}
           </div>
