@@ -85,8 +85,26 @@ function applyColors(tenant, theme) {
 export default function ThemeProvider({ tenant }) {
   const [theme, setTheme] = useState("dark");
 
+  // Force light mode if tenant requires it
+  useEffect(() => {
+    if (tenant?.forceLightMode) {
+      document.documentElement.dataset.theme = "light";
+      document.documentElement.dataset.forceLight = "true";
+      setTheme("light");
+      // Clear any saved dark preference
+      try {
+        const segs = window.location.pathname.split("/").filter(Boolean);
+        const slug = (segs[0] && !["admin","learner","superadmin","api","_next"].includes(segs[0])) ? segs[0] : "_root";
+        localStorage.setItem(`lp-theme-${slug}`, "light");
+      } catch {}
+    } else {
+      document.documentElement.removeAttribute("data-force-light");
+    }
+  }, [tenant?.forceLightMode]);
+
   // Watch for theme attribute changes (from ThemeToggle)
   useEffect(() => {
+    if (tenant?.forceLightMode) return; // skip observer if forced light
     const root = document.documentElement;
     setTheme(root.dataset.theme || "dark");
 

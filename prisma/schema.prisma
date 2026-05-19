@@ -38,6 +38,7 @@ model Tenant {
   featureScheduling  Boolean @default(false)  // admin-driven training session scheduling (ACT)
   bookingAdminEmail  String  @default("")     // email to receive booking notifications
   termsUrl           String  @default("")     // URL to terms & conditions page
+  forceLightMode     Boolean @default(false)   // hide dark mode toggle, always light
   paystackSubaccount String  @default("")     // Paystack subaccount code (ACCT_xxx)
   platformFeePercent Int     @default(10)      // % Onyx Digital takes per transaction
 

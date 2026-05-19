@@ -76,6 +76,7 @@ const defaultTenantForm = {
   featureWorkbooks: false,
   featureScheduling: false,
   termsUrl: "",
+  forceLightMode: false,
 };
 
 export default function SuperAdminPage() {
@@ -202,6 +203,7 @@ export default function SuperAdminPage() {
       featureWorkbooks: t.featureWorkbooks || false,
       featureScheduling: t.featureScheduling || false,
       termsUrl: t.termsUrl || "",
+      forceLightMode: t.forceLightMode || false,
     });
     setShowEdit(t);
   };
@@ -424,6 +426,7 @@ export default function SuperAdminPage() {
               ["featureCourseCap", "Course Enrollment Cap", "Limit maximum number of students who can enroll in each course"],
               ["featureWorkbooks", "Practical Workbooks", "Interactive workbooks where learners fill in answers and submit for review (ACT)"],
               ["featureScheduling", "Training Scheduler", "Admin creates & assigns training sessions to learners with notifications and reminders (ACT)"],
+              ["forceLightMode", "Force Light Mode", "Disable dark mode toggle — tenant always shows in light theme"],
             ].map(([key, label, desc]) => (
               <div key={key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
                 <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, flexShrink: 0 }}>

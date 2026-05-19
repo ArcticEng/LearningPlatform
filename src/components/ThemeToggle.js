@@ -14,8 +14,14 @@ function getKey() {
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState("dark");
+  const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
+    // Hide if tenant forces light mode
+    if (document.documentElement.dataset.forceLight === "true") {
+      setHidden(true);
+      return;
+    }
     const key = getKey();
     const saved = localStorage.getItem(key);
     if (saved) {
@@ -24,7 +30,16 @@ export default function ThemeToggle() {
     } else {
       setTheme(document.documentElement.dataset.theme || "dark");
     }
+
+    // Re-check if forceLight is set after tenant loads
+    const observer = new MutationObserver(() => {
+      if (document.documentElement.dataset.forceLight === "true") setHidden(true);
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-force-light"] });
+    return () => observer.disconnect();
   }, []);
+
+  if (hidden) return null;
 
   const toggle = () => {
     const next = theme === "dark" ? "light" : "dark";

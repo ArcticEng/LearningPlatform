@@ -23,6 +23,7 @@ export async function GET(req) {
       featureWorkbooks: true,
       featureScheduling: true,
       termsUrl: true,
+      forceLightMode: true,
     },
   });
 
