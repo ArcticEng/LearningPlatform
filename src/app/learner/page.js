@@ -7,6 +7,7 @@ import ThemeProvider from "@/components/ThemeProvider";
 import Logo from "@/components/Logo";
 import BookingCalendar from "@/components/BookingCalendar";
 import WorkbookViewer from "@/components/WorkbookViewer";
+import SessionCalendar from "@/components/SessionCalendar";
 
 // react-pdf must be client-only — avoids SSR crashes from the worker
 const PDFViewer = dynamic(() => import("@/components/PDFViewer"), {
@@ -871,7 +872,16 @@ export default function LearnerPage() {
         {/* MY SESSIONS */}
         {view === "my-sessions" && (
           <div>
-            <h1 className="page-title">Upcoming Sessions</h1>
+            <h1 className="page-title">My Training Schedule</h1>
+
+            {/* Calendar view */}
+            <div className="card" style={{ marginBottom: 24 }}>
+              <SessionCalendar sessions={upcomingSessions} readOnly onSelectSession={(s) => {
+                const el = document.getElementById(`session-${s.id}`);
+                if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+              }} />
+            </div>
+
             {upcomingSessions.length === 0 ? (
               <div className="card" style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
                 <p style={{ fontSize: 18, fontWeight: 600, color: "var(--text)" }}>No upcoming sessions</p>
@@ -883,7 +893,7 @@ export default function LearnerPage() {
                   const dateStr = new Date(s.date).toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
                   const daysUntil = Math.ceil((new Date(s.date) - new Date()) / (1000 * 60 * 60 * 24));
                   return (
-                    <div key={s.id} className="card" style={{ borderLeft: `4px solid ${daysUntil <= 3 ? "var(--danger)" : "var(--accent)"}` }}>
+                    <div key={s.id} id={`session-${s.id}`} className="card" style={{ borderLeft: `4px solid ${daysUntil <= 3 ? "var(--danger)" : "var(--accent)"}` }}>
                       <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{s.title}</div>
                       {s.description && <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "0 0 10px" }}>{s.description}</p>}
                       <div style={{ display: "flex", gap: 16, fontSize: 14, color: "var(--text-muted)", flexWrap: "wrap", marginBottom: 8 }}>

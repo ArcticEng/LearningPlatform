@@ -5,6 +5,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import ThemeProvider from "@/components/ThemeProvider";
 import Logo from "@/components/Logo";
 import AdminBookingCalendar from "@/components/AdminBookingCalendar";
+import SessionCalendar from "@/components/SessionCalendar";
 
 const api = {
   get: (url) => fetch(url).then(r => r.json()),
@@ -100,6 +101,9 @@ export default function AdminPage() {
   const [slotForm, setSlotForm] = useState({ title: "", date: "", startTime: "", endTime: "", location: "", capacity: 10, courseId: "" });
   const [sessions, setSessions] = useState([]);
   const [showCreateSession, setShowCreateSession] = useState(false);
+  const [showRecurring, setShowRecurring] = useState(false);
+  const [recurringForm, setRecurringForm] = useState({ title: "", startDate: "", weeks: 4, days: [], startTime: "10:00", endTime: "12:00", location: "", notes: "", capacity: 20, learnerIds: [] });
+  const [selectedSession, setSelectedSession] = useState(null);
   const [sessionForm, setSessionForm] = useState({ title: "", description: "", date: "", startTime: "", endTime: "", location: "", notes: "", capacity: 20, courseId: "", learnerIds: [] });
   const [showWorkbook, setShowWorkbook] = useState(null); // module for workbook editing
   const [workbookSections, setWorkbookSections] = useState([]);
@@ -1313,126 +1317,249 @@ export default function AdminPage() {
         {/* SCHEDULE */}
         {view === "schedule" && (() => {
           const reloadSessions = () => api.get("/api/sessions").then(d => setSessions(d.sessions || []));
+
+          const createRecurringSessions = async () => {
+            const f = recurringForm;
+            if (!f.title || !f.startDate || f.days.length === 0) return alert("Title, start date, and at least one day are required");
+            const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+            const selectedDayNums = f.days.map(d => dayMap[d]);
+            const start = new Date(f.startDate);
+            const dates = [];
+            for (let w = 0; w < (f.weeks || 4); w++) {
+              for (let d = 0; d < 7; d++) {
+                const date = new Date(start);
+                date.setDate(start.getDate() + (w * 7) + d);
+                if (selectedDayNums.includes(date.getDay())) dates.push(date);
+              }
+            }
+            // Create each session
+            for (const date of dates) {
+              await api.post("/api/sessions", {
+                title: f.title,
+                date: date.toISOString().split("T")[0],
+                startTime: f.startTime,
+                endTime: f.endTime,
+                location: f.location,
+                notes: f.notes,
+                capacity: f.capacity,
+                learnerIds: f.learnerIds,
+              });
+            }
+            alert(`Created ${dates.length} sessions across ${f.weeks} weeks. Learners have been notified.`);
+            setRecurringForm({ title: "", startDate: "", weeks: 4, days: [], startTime: "10:00", endTime: "12:00", location: "", notes: "", capacity: 20, learnerIds: [] });
+            setShowRecurring(false);
+            reloadSessions();
+          };
+
           const createSession = async () => {
-            if (!sessionForm.title || !sessionForm.date) return alert("Title and date are required");
+            if (!sessionForm.title || !sessionForm.date) return alert("Title and date required");
             await api.post("/api/sessions", sessionForm);
             setSessionForm({ title: "", description: "", date: "", startTime: "", endTime: "", location: "", notes: "", capacity: 20, courseId: "", learnerIds: [] });
             setShowCreateSession(false);
             reloadSessions();
           };
-          const deleteSession = async (id) => { if (!confirm("Delete this session? Assigned learners will be notified.")) return; await api.del("/api/sessions", { id }); reloadSessions(); };
-          const addLearnerToSession = async (sessionId, userId) => { await api.put("/api/sessions", { id: sessionId, addLearnerIds: [userId] }); reloadSessions(); };
-          const removeLearnerFromSession = async (sessionId, userId) => { await api.put("/api/sessions", { id: sessionId, removeLearnerIds: [userId] }); reloadSessions(); };
 
-          const upcoming = sessions.filter(s => new Date(s.date) >= new Date());
-          const past = sessions.filter(s => new Date(s.date) < new Date());
+          const deleteSession = async (id) => {
+            if (!confirm("Delete this session? Learners will be notified.")) return;
+            await api.del("/api/sessions", { id });
+            setSelectedSession(null);
+            reloadSessions();
+          };
+
+          const addLearnerToSession = async (sessionId, userId) => {
+            await api.put("/api/sessions", { id: sessionId, addLearnerIds: [userId] });
+            reloadSessions();
+          };
+
+          const removeLearnerFromSession = async (sessionId, userId) => {
+            await api.put("/api/sessions", { id: sessionId, removeLearnerIds: [userId] });
+            reloadSessions();
+          };
+
+          const dayOptions = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
           return (
             <div>
               <div className="page-header">
                 <h1 className="page-title" style={{ margin: 0 }}>Training Schedule</h1>
-                <button className="btn btn-primary" onClick={() => setShowCreateSession(true)}><Icon name="plus" size={16}/> New Session</button>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button className="btn btn-primary" onClick={() => setShowRecurring(true)}><Icon name="calendar" size={16}/> Recurring Schedule</button>
+                  <button className="btn btn-secondary" onClick={() => setShowCreateSession(true)}><Icon name="plus" size={16}/> Single Session</button>
+                </div>
               </div>
 
-              {sessions.length === 0 ? (
-                <div className="card" style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
-                  <p style={{ fontSize: 18, fontWeight: 600, color: "var(--text)" }}>No sessions scheduled</p>
-                  <p>Create training sessions and assign learners to them.</p>
-                </div>
-              ) : (
-                <>
-                  {[{label: "Upcoming", list: upcoming}, {label: "Past", list: past}].filter(g => g.list.length > 0).map(group => (
-                    <div key={group.label} style={{ marginBottom: 32 }}>
-                      <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>{group.label} ({group.list.length})</h3>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        {group.list.map(s => {
-                          const dateStr = new Date(s.date).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-                          const assignedIds = (s.attendees || []).map(a => a.userId);
-                          const unassigned = learners.filter(l => !assignedIds.includes(l.id));
-                          return (
-                            <div key={s.id} className="card" style={{ padding: "16px 20px" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-                                <div style={{ flex: 1, minWidth: 200 }}>
-                                  <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{s.title}</div>
-                                  {s.description && <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "0 0 8px" }}>{s.description}</p>}
-                                  <div style={{ display: "flex", gap: 12, fontSize: 13, color: "var(--text-muted)", flexWrap: "wrap", marginBottom: 8 }}>
-                                    <span>\ud83d\udcc5 {dateStr}</span>
-                                    {s.startTime && <span>\ud83d\udd52 {s.startTime}{s.endTime ? ` \u2013 ${s.endTime}` : ""}</span>}
-                                    {s.location && <span>\ud83d\udccd {s.location}</span>}
-                                  </div>
-                                  <div style={{ display: "flex", gap: 6 }}>
-                                    <span className="badge badge-accent">{(s.attendees || []).length}/{s.capacity} assigned</span>
-                                    {s.status === "cancelled" && <span className="badge badge-danger">Cancelled</span>}
-                                  </div>
-                                </div>
-                                <button className="btn btn-sm btn-danger" onClick={() => deleteSession(s.id)}><Icon name="trash" size={14}/></button>
-                              </div>
+              {/* Calendar View */}
+              <div className="card" style={{ marginBottom: 24 }}>
+                <SessionCalendar
+                  sessions={sessions}
+                  onSelectDate={(date) => {
+                    setSessionForm(p => ({ ...p, date: date.toISOString().split("T")[0], startTime: "10:00", endTime: "12:00" }));
+                    setShowCreateSession(true);
+                  }}
+                  onSelectSession={(s) => setSelectedSession(s)}
+                />
+              </div>
 
-                              {/* Attendees */}
-                              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Assigned Learners ({(s.attendees || []).length})</div>
-                                {(s.attendees || []).length > 0 ? (
-                                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                    {(s.attendees || []).map(a => (
-                                      <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", background: "var(--surface-alt)", borderRadius: 6, fontSize: 13 }}>
-                                        <div><span style={{ fontWeight: 600 }}>{a.userName}</span> <span style={{ color: "var(--text-muted)" }}>{a.userIdNumber}</span></div>
-                                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                                          <span className={`badge ${a.status === "attended" ? "badge-success" : a.status === "absent" ? "badge-danger" : "badge-accent"}`} style={{ fontSize: 10 }}>{a.status}</span>
-                                          <button className="btn btn-sm btn-danger" style={{ padding: "2px 6px" }} onClick={() => removeLearnerFromSession(s.id, a.userId)}>\u00d7</button>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No learners assigned yet.</p>}
-
-                                {/* Add learner dropdown */}
-                                {unassigned.length > 0 && (
-                                  <div style={{ marginTop: 8 }}>
-                                    <select className="input" style={{ fontSize: 13 }} defaultValue="" onChange={e => { if (e.target.value) { addLearnerToSession(s.id, e.target.value); e.target.value = ""; } }}>
-                                      <option value="">+ Add learner...</option>
-                                      {unassigned.map(l => <option key={l.id} value={l.id}>{l.name} ({l.idNumber})</option>)}
-                                    </select>
-                                  </div>
-                                )}
-                              </div>
-
-                              {s.notes && <div style={{ marginTop: 12, padding: 12, background: "var(--surface-alt)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)" }}>\ud83d\udcdd {s.notes}</div>}
-                            </div>
-                          );
-                        })}
+              {/* Selected session detail */}
+              {selectedSession && (() => {
+                const s = sessions.find(x => x.id === selectedSession.id) || selectedSession;
+                const dateStr = new Date(s.date).toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+                const assignedIds = (s.attendees || []).map(a => a.userId);
+                const unassigned = learners.filter(l => !assignedIds.includes(l.id));
+                return (
+                  <div className="card" style={{ borderLeft: "4px solid var(--accent)", marginBottom: 24 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{s.title}</div>
+                        {s.description && <p style={{ color: "var(--text-muted)", fontSize: 13, margin: "0 0 10px" }}>{s.description}</p>}
+                        <div style={{ display: "flex", gap: 14, fontSize: 14, color: "var(--text-muted)", flexWrap: "wrap", marginBottom: 10 }}>
+                          <span>\ud83d\udcc5 {dateStr}</span>
+                          {s.startTime && <span>\ud83d\udd52 {s.startTime}{s.endTime ? ` \u2013 ${s.endTime}` : ""}</span>}
+                          {s.location && <span>\ud83d\udccd {s.location}</span>}
+                        </div>
+                        <span className="badge badge-accent">{(s.attendees || []).length}/{s.capacity} assigned</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className="btn btn-sm btn-danger" onClick={() => deleteSession(s.id)}><Icon name="trash" size={14}/> Delete</button>
+                        <button className="btn btn-sm btn-secondary" onClick={() => setSelectedSession(null)}><Icon name="x" size={14}/></button>
                       </div>
                     </div>
-                  ))}
-                </>
+
+                    {/* Attendees */}
+                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Assigned Learners ({(s.attendees || []).length})</div>
+                      {(s.attendees || []).length > 0 ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
+                          {(s.attendees || []).map(a => (
+                            <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "var(--surface-alt)", borderRadius: 8, fontSize: 13 }}>
+                              <div><span style={{ fontWeight: 600 }}>{a.userName}</span> <span style={{ color: "var(--text-muted)" }}>{a.userIdNumber}</span></div>
+                              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                <span className={`badge ${a.status === "attended" ? "badge-success" : a.status === "absent" ? "badge-danger" : "badge-accent"}`} style={{ fontSize: 10 }}>{a.status}</span>
+                                <button className="btn btn-sm btn-danger" style={{ padding: "2px 8px" }} onClick={() => removeLearnerFromSession(s.id, a.userId)}>\u00d7</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 10 }}>No learners assigned.</p>}
+                      {unassigned.length > 0 && (
+                        <select className="input" style={{ fontSize: 13 }} defaultValue="" onChange={e => { if (e.target.value) { addLearnerToSession(s.id, e.target.value); e.target.value = ""; reloadSessions().then(() => { const updated = sessions.find(x => x.id === s.id); if (updated) setSelectedSession({...updated}); }); } }}>
+                          <option value="">+ Add learner...</option>
+                          {unassigned.map(l => <option key={l.id} value={l.id}>{l.name} ({l.idNumber})</option>)}
+                        </select>
+                      )}
+                    </div>
+                    {s.notes && <div style={{ marginTop: 12, padding: 10, background: "var(--surface-alt)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)" }}>\ud83d\udcdd {s.notes}</div>}
+                  </div>
+                );
+              })()}
+
+              {/* Upcoming list */}
+              {sessions.filter(s => new Date(s.date) >= new Date()).length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Upcoming ({sessions.filter(s => new Date(s.date) >= new Date()).length})</h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {sessions.filter(s => new Date(s.date) >= new Date()).slice(0, 10).map(s => {
+                      const dateStr = new Date(s.date).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
+                      return (
+                        <div key={s.id} className="card" style={{ padding: "10px 14px", cursor: "pointer", border: selectedSession?.id === s.id ? "2px solid var(--accent)" : "1px solid var(--border)" }}
+                          onClick={() => setSelectedSession(s)}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", minWidth: 70 }}>{dateStr}</span>
+                              <span style={{ fontWeight: 600, fontSize: 14 }}>{s.title}</span>
+                              {s.startTime && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{s.startTime}{s.endTime ? `\u2013${s.endTime}` : ""}</span>}
+                            </div>
+                            <span className="badge badge-accent" style={{ fontSize: 10 }}>{(s.attendees || []).length} learners</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
 
-              <Modal open={showCreateSession} onClose={() => setShowCreateSession(false)} title="Create Training Session">
+              {/* RECURRING SCHEDULE MODAL */}
+              <Modal open={showRecurring} onClose={() => setShowRecurring(false)} title="Create Recurring Schedule">
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <div><label className="label">Session Title</label><input className="input" value={sessionForm.title} onChange={e => setSessionForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Practical Assessment - Module 1" /></div>
-                  <div><label className="label">Description (optional)</label><textarea className="input" value={sessionForm.description} onChange={e => setSessionForm(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="Brief description..." /></div>
-                  <div><label className="label">Date</label><input className="input" type="date" value={sessionForm.date} onChange={e => setSessionForm(p => ({ ...p, date: e.target.value }))} /></div>
+                  <div><label className="label">Class Title</label><input className="input" value={recurringForm.title} onChange={e => setRecurringForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Practical Assessment - In-Person" /></div>
                   <div style={{ display: "flex", gap: 12 }}>
-                    <div style={{ flex: 1 }}><label className="label">Start Time</label><input className="input" type="time" value={sessionForm.startTime} onChange={e => setSessionForm(p => ({ ...p, startTime: e.target.value }))} /></div>
-                    <div style={{ flex: 1 }}><label className="label">End Time</label><input className="input" type="time" value={sessionForm.endTime} onChange={e => setSessionForm(p => ({ ...p, endTime: e.target.value }))} /></div>
+                    <div style={{ flex: 1 }}><label className="label">Start Date (week of)</label><input className="input" type="date" value={recurringForm.startDate} onChange={e => setRecurringForm(p => ({ ...p, startDate: e.target.value }))} /></div>
+                    <div style={{ flex: 1 }}><label className="label">Number of Weeks</label><input className="input" type="number" min="1" max="52" value={recurringForm.weeks} onChange={e => setRecurringForm(p => ({ ...p, weeks: parseInt(e.target.value) || 4 }))} /></div>
                   </div>
-                  <div><label className="label">Location</label><input className="input" value={sessionForm.location} onChange={e => setSessionForm(p => ({ ...p, location: e.target.value }))} placeholder="e.g. Training Centre, Somerset West" /></div>
-                  <div><label className="label">Capacity</label><input className="input" type="number" min="1" value={sessionForm.capacity} onChange={e => setSessionForm(p => ({ ...p, capacity: parseInt(e.target.value) || 20 }))} /></div>
-                  <div><label className="label">Notes (optional)</label><textarea className="input" value={sessionForm.notes} onChange={e => setSessionForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Any additional info for learners..." /></div>
+                  <div>
+                    <label className="label">Days of the Week</label>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {dayOptions.map(d => {
+                        const isSelected = recurringForm.days.includes(d);
+                        return (
+                          <button key={d} onClick={() => setRecurringForm(p => ({ ...p, days: isSelected ? p.days.filter(x => x !== d) : [...p.days, d] }))}
+                            style={{ padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13,
+                              background: isSelected ? "var(--accent)" : "var(--surface-alt)",
+                              color: isSelected ? "#fff" : "var(--text-muted)",
+                              transition: "0.15s",
+                            }}>{d}</button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <div style={{ flex: 1 }}><label className="label">Start Time</label><input className="input" type="time" value={recurringForm.startTime} onChange={e => setRecurringForm(p => ({ ...p, startTime: e.target.value }))} /></div>
+                    <div style={{ flex: 1 }}><label className="label">End Time</label><input className="input" type="time" value={recurringForm.endTime} onChange={e => setRecurringForm(p => ({ ...p, endTime: e.target.value }))} /></div>
+                  </div>
+                  <div><label className="label">Location</label><input className="input" value={recurringForm.location} onChange={e => setRecurringForm(p => ({ ...p, location: e.target.value }))} placeholder="e.g. Training Centre, Somerset West" /></div>
+                  <div><label className="label">Notes (optional)</label><textarea className="input" value={recurringForm.notes} onChange={e => setRecurringForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Info for learners..." /></div>
                   <div>
                     <label className="label">Assign Learners</label>
-                    <div style={{ maxHeight: 200, overflowY: "auto", padding: 12, background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ maxHeight: 180, overflowY: "auto", padding: 12, background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 6 }}>
                       {learners.map(l => (
-                        <label key={l.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: sessionForm.learnerIds.includes(l.id) ? "var(--accent-soft)" : "transparent" }}>
-                          <input type="checkbox" checked={sessionForm.learnerIds.includes(l.id)} onChange={e => {
-                            setSessionForm(p => ({ ...p, learnerIds: e.target.checked ? [...p.learnerIds, l.id] : p.learnerIds.filter(i => i !== l.id) }));
-                          }} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                        <label key={l.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: recurringForm.learnerIds.includes(l.id) ? "var(--accent-soft)" : "transparent" }}>
+                          <input type="checkbox" checked={recurringForm.learnerIds.includes(l.id)} onChange={e => setRecurringForm(p => ({ ...p, learnerIds: e.target.checked ? [...p.learnerIds, l.id] : p.learnerIds.filter(i => i !== l.id) }))} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
                           <span style={{ fontWeight: 600, fontSize: 14 }}>{l.name}</span>
                           <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{l.idNumber}</span>
                         </label>
                       ))}
                     </div>
                   </div>
-                  <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={createSession}><Icon name="plus" size={16}/> Create Session & Notify Learners</button>
+                  {/* Preview */}
+                  {recurringForm.startDate && recurringForm.days.length > 0 && (
+                    <div style={{ padding: 12, background: "var(--accent-soft)", borderRadius: 10, fontSize: 13 }}>
+                      <strong>Preview:</strong> {(() => {
+                        const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+                        const selectedDayNums = recurringForm.days.map(d => dayMap[d]);
+                        const start = new Date(recurringForm.startDate);
+                        let count = 0;
+                        for (let w = 0; w < recurringForm.weeks; w++) for (let d = 0; d < 7; d++) { const dt = new Date(start); dt.setDate(start.getDate() + w*7+d); if (selectedDayNums.includes(dt.getDay())) count++; }
+                        return `${count} sessions across ${recurringForm.weeks} weeks (${recurringForm.days.join(", ")}, ${recurringForm.startTime}\u2013${recurringForm.endTime})${recurringForm.learnerIds.length > 0 ? ` \u2022 ${recurringForm.learnerIds.length} learners will be notified` : ""}`;
+                      })()}
+                    </div>
+                  )}
+                  <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={createRecurringSessions}><Icon name="calendar" size={16}/> Create Schedule & Notify Learners</button>
+                </div>
+              </Modal>
+
+              {/* SINGLE SESSION MODAL */}
+              <Modal open={showCreateSession} onClose={() => setShowCreateSession(false)} title="Create Single Session">
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div><label className="label">Session Title</label><input className="input" value={sessionForm.title} onChange={e => setSessionForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Practical Assessment" /></div>
+                  <div><label className="label">Date</label><input className="input" type="date" value={sessionForm.date} onChange={e => setSessionForm(p => ({ ...p, date: e.target.value }))} /></div>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <div style={{ flex: 1 }}><label className="label">Start Time</label><input className="input" type="time" value={sessionForm.startTime} onChange={e => setSessionForm(p => ({ ...p, startTime: e.target.value }))} /></div>
+                    <div style={{ flex: 1 }}><label className="label">End Time</label><input className="input" type="time" value={sessionForm.endTime} onChange={e => setSessionForm(p => ({ ...p, endTime: e.target.value }))} /></div>
+                  </div>
+                  <div><label className="label">Location</label><input className="input" value={sessionForm.location} onChange={e => setSessionForm(p => ({ ...p, location: e.target.value }))} placeholder="e.g. Training Centre" /></div>
+                  <div><label className="label">Notes</label><textarea className="input" value={sessionForm.notes} onChange={e => setSessionForm(p => ({ ...p, notes: e.target.value }))} rows={2} /></div>
+                  <div>
+                    <label className="label">Assign Learners</label>
+                    <div style={{ maxHeight: 180, overflowY: "auto", padding: 12, background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 6 }}>
+                      {learners.map(l => (
+                        <label key={l.id} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: sessionForm.learnerIds.includes(l.id) ? "var(--accent-soft)" : "transparent" }}>
+                          <input type="checkbox" checked={sessionForm.learnerIds.includes(l.id)} onChange={e => setSessionForm(p => ({ ...p, learnerIds: e.target.checked ? [...p.learnerIds, l.id] : p.learnerIds.filter(i => i !== l.id) }))} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                          <span style={{ fontWeight: 600, fontSize: 14 }}>{l.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={createSession}><Icon name="plus" size={16}/> Create & Notify</button>
                 </div>
               </Modal>
             </div>
