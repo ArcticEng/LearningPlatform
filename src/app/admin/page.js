@@ -102,6 +102,8 @@ export default function AdminPage() {
   const [sessions, setSessions] = useState([]);
   const [showCreateSession, setShowCreateSession] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(null); // clicked date
+  const [editingSession, setEditingSession] = useState(null); // session being edited
   const [recurringForm, setRecurringForm] = useState({ title: "", startDate: "", weeks: 4, days: [], startTime: "10:00", endTime: "12:00", location: "", notes: "", capacity: 20, learnerIds: [] });
   const [selectedSession, setSelectedSession] = useState(null);
   const [sessionForm, setSessionForm] = useState({ title: "", description: "", date: "", startTime: "", endTime: "", location: "", notes: "", capacity: 20, courseId: "", learnerIds: [] });
@@ -1366,6 +1368,36 @@ export default function AdminPage() {
             reloadSessions();
           };
 
+          const editSession = async () => {
+            if (!editingSession || !sessionForm.title) return;
+            await api.put("/api/sessions", {
+              id: editingSession.id,
+              title: sessionForm.title,
+              description: sessionForm.description,
+              date: sessionForm.date,
+              startTime: sessionForm.startTime,
+              endTime: sessionForm.endTime,
+              location: sessionForm.location,
+              notes: sessionForm.notes,
+              capacity: sessionForm.capacity,
+            });
+            setEditingSession(null);
+            setShowCreateSession(false);
+            reloadSessions();
+          };
+
+          const openEditSession = (s) => {
+            setSessionForm({
+              title: s.title || "", description: s.description || "",
+              date: new Date(s.date).toISOString().split("T")[0],
+              startTime: s.startTime || "", endTime: s.endTime || "",
+              location: s.location || "", notes: s.notes || "",
+              capacity: s.capacity || 20, courseId: "", learnerIds: [],
+            });
+            setEditingSession(s);
+            setShowCreateSession(true);
+          };
+
           const addLearnerToSession = async (sessionId, userId) => {
             await api.put("/api/sessions", { id: sessionId, addLearnerIds: [userId] });
             reloadSessions();
@@ -1392,10 +1424,7 @@ export default function AdminPage() {
               <div className="card" style={{ marginBottom: 24 }}>
                 <SessionCalendar
                   sessions={sessions}
-                  onSelectDate={(date) => {
-                    setSessionForm(p => ({ ...p, date: date.toISOString().split("T")[0], startTime: "10:00", endTime: "12:00" }));
-                    setShowCreateSession(true);
-                  }}
+                  onSelectDate={(date) => setShowDatePicker(date)}
                   onSelectSession={(s) => setSelectedSession(s)}
                 />
               </div>
@@ -1420,6 +1449,7 @@ export default function AdminPage() {
                         <span className="badge badge-accent">{(s.attendees || []).length}/{s.capacity} assigned</span>
                       </div>
                       <div style={{ display: "flex", gap: 6 }}>
+                        <button className="btn btn-sm btn-secondary" onClick={() => openEditSession(s)}><Icon name="edit" size={14}/> Edit</button>
                         <button className="btn btn-sm btn-danger" onClick={() => deleteSession(s.id)}><Icon name="trash" size={14}/> Delete</button>
                         <button className="btn btn-sm btn-secondary" onClick={() => setSelectedSession(null)}><Icon name="x" size={14}/></button>
                       </div>
@@ -1474,6 +1504,38 @@ export default function AdminPage() {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+
+              {/* DATE CLICK POPUP */}
+              {showDatePicker && (
+                <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--modal-bg)", padding: 20 }}
+                  onClick={e => { if (e.target === e.currentTarget) setShowDatePicker(null); }}>
+                  <div style={{ background: "var(--surface)", borderRadius: 16, padding: 28, maxWidth: 360, width: "100%", border: "1px solid var(--border)", textAlign: "center" }}>
+                    <h3 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700 }}>
+                      {showDatePicker.toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                    </h3>
+                    <p style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 24 }}>What would you like to create?</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <button className="btn btn-primary" style={{ justifyContent: "center", padding: "14px 20px" }} onClick={() => {
+                        const dateStr = showDatePicker.toISOString().split("T")[0];
+                        setSessionForm(p => ({ ...p, title: "", date: dateStr, startTime: "10:00", endTime: "12:00" }));
+                        setEditingSession(null);
+                        setShowDatePicker(null);
+                        setShowCreateSession(true);
+                      }}>
+                        <Icon name="plus" size={16}/> Single Session
+                      </button>
+                      <button className="btn btn-secondary" style={{ justifyContent: "center", padding: "14px 20px" }} onClick={() => {
+                        const dateStr = showDatePicker.toISOString().split("T")[0];
+                        setRecurringForm(p => ({ ...p, startDate: dateStr }));
+                        setShowDatePicker(null);
+                        setShowRecurring(true);
+                      }}>
+                        <Icon name="calendar" size={16}/> Recurring Schedule
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1538,7 +1600,7 @@ export default function AdminPage() {
               </Modal>
 
               {/* SINGLE SESSION MODAL */}
-              <Modal open={showCreateSession} onClose={() => setShowCreateSession(false)} title="Create Single Session">
+              <Modal open={showCreateSession} onClose={() => { setShowCreateSession(false); setEditingSession(null); }} title={editingSession ? "Edit Session" : "Create Single Session"}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div><label className="label">Session Title</label><input className="input" value={sessionForm.title} onChange={e => setSessionForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Practical Assessment" /></div>
                   <div><label className="label">Date</label><input className="input" type="date" value={sessionForm.date} onChange={e => setSessionForm(p => ({ ...p, date: e.target.value }))} /></div>
@@ -1547,7 +1609,9 @@ export default function AdminPage() {
                     <div style={{ flex: 1 }}><label className="label">End Time</label><input className="input" type="time" value={sessionForm.endTime} onChange={e => setSessionForm(p => ({ ...p, endTime: e.target.value }))} /></div>
                   </div>
                   <div><label className="label">Location</label><input className="input" value={sessionForm.location} onChange={e => setSessionForm(p => ({ ...p, location: e.target.value }))} placeholder="e.g. Training Centre" /></div>
+                  <div><label className="label">Capacity</label><input className="input" type="number" min="1" value={sessionForm.capacity} onChange={e => setSessionForm(p => ({ ...p, capacity: parseInt(e.target.value) || 20 }))} /></div>
                   <div><label className="label">Notes</label><textarea className="input" value={sessionForm.notes} onChange={e => setSessionForm(p => ({ ...p, notes: e.target.value }))} rows={2} /></div>
+                  {!editingSession && (
                   <div>
                     <label className="label">Assign Learners</label>
                     <div style={{ maxHeight: 180, overflowY: "auto", padding: 12, background: "var(--surface-alt)", borderRadius: 10, border: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 6 }}>
@@ -1559,7 +1623,10 @@ export default function AdminPage() {
                       ))}
                     </div>
                   </div>
-                  <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={createSession}><Icon name="plus" size={16}/> Create & Notify</button>
+                  )}
+                  <button className="btn btn-primary" style={{ justifyContent: "center" }} onClick={editingSession ? editSession : createSession}>
+                    <Icon name={editingSession ? "check" : "plus"} size={16}/> {editingSession ? "Save Changes" : "Create & Notify"}
+                  </button>
                 </div>
               </Modal>
             </div>
