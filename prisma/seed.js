@@ -123,7 +123,7 @@ async function main() {
         slug: "_system",
         name: "Onyx Digital",
         tagline: "Super Admin Portal",
-        logoUrl: "",
+        logoUrl: "/assets/logo-onyxdigital.svg",
         colorPrimary: "#1a1a2e",
         colorSecondary: "#16213e",
         colorAccent: "#e94560",
@@ -136,6 +136,11 @@ async function main() {
     console.log("✅ System theme created");
   } else {
     console.log("ℹ️  System theme already exists");
+    // Update logo if missing
+    if (!sysTenant.logoUrl) {
+      await prisma.tenant.update({ where: { slug: "_system" }, data: { logoUrl: "/assets/logo-onyxdigital.svg" } });
+      console.log("🖼️  System logo updated");
+    }
   }
 }
 
